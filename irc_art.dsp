@@ -93,6 +93,10 @@ LINK32=link.exe
 
 SOURCE=.\irc_art_editor.c
 # End Source File
+# Begin Source File
+
+SOURCE=.\paint_window.c
+# End Source File
 # End Group
 # Begin Group "Header Files"
 
