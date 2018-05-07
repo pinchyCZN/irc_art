@@ -1,19 +1,20 @@
 #include <windows.h>
 #include "resource.h"
 
-int rows=10,cols=40;
-int cwidth=8,cheight=12;
 
 typedef struct{
 	WCHAR val;
 	int fg;
 	int bg;
-	int row;
-	int col;
 }CELL;
 int cell_count=0;
-CELL cells[]={0};
+CELL *cells=0;
+int rows=10,cols=40;
+int cwidth=8,cheight=12;
 
+int resize_map(int w,int h)
+{
+}
 int test_cell()
 {
 	CELL *x=cells;
