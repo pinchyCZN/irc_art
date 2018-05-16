@@ -10,6 +10,8 @@ BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	switch(msg){
 	case WM_INITDIALOG:
+		create_vga_font();
+		update_cells(get_rows(),get_cols());
 		break;
 	case WM_COMMAND:
 		break;
@@ -38,7 +40,6 @@ int WINAPI WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,in
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	test_cell();
 
 	while (1){
 		int ret;
