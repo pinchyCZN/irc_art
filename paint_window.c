@@ -10,11 +10,97 @@ typedef struct{
 	int fg;
 	int bg;
 }CELL;
-int cell_count=0;
 CELL *cells=0;
 int rows=10,cols=40;
-int cwidth=8,cheight=12;
+POINT cursor={0};
+int CELL_WIDTH=8;
+int CELL_HEIGHT=12;
 
+int move_cursor(int x,int y)
+{
+	cursor.x+=x;
+	cursor.y+=y;
+	if(cursor.x>=cols)
+		cursor.x=0;
+	if(cursor.x<0)
+		cursor.x=cols-1;
+	if(cursor.y<0)
+		cursor.y=rows-1;
+	if(cursor.y>=rows)
+		cursor.y=0;
+	if(0==rows)
+		cursor.y=0;
+	if(0==cols)		
+		cursor.x=0;
+	return 1;
+}
+int mouse_click(int x,int y)
+{
+	x/=CELL_WIDTH;
+	y/=CELL_HEIGHT;
+	if(x<0 || x>=cols)
+		return 0;
+	if(y<0 || y>=rows)
+		return 0;
+	cursor.x=x;
+	cursor.y=y;
+	return 1;
+}
+int is_inside(int x,int y)
+{
+	int result=FALSE;
+	if(x>=cols || x<0)
+		return result;
+	if(y>=rows || y<0)
+		return result;
+	result=TRUE;
+	return result;
+}
+int set_fg(int fg,int x,int y)
+{
+	int result=FALSE;
+	CELL *cell;
+	int index;
+	if(!is_inside(x,y))
+		return result;
+	index=x+(y*cols);
+	if(index>=(rows*cols))
+		return result;
+	cell=&cells[index];
+	cell->fg=fg;
+	result=TRUE;
+	return result;
+}
+int set_bg(int bg,int x,int y)
+{
+	int result=FALSE;
+	CELL *cell;
+	int index;
+	if(!is_inside(x,y))
+		return result;
+	index=x+(y*cols);
+	if(index>=(rows*cols))
+		return result;
+	cell=&cells[index];
+	cell->bg=bg;
+	result=TRUE;
+	return result;
+}
+int set_char(int key,int x,int y)
+{
+	int result=FALSE;
+	CELL *cell;
+	int index;
+	if(!is_inside(x,y))
+		return result;
+	index=x+(y*cols);
+	if(index>=(rows*cols))
+		return result;
+	cell=&cells[index];
+	cell->val=key;
+	result=TRUE;
+	return result;
+}
 int resize_map(int w,int h)
 {
 	return 0;
@@ -31,6 +117,14 @@ int update_cells(int w,int h)
 	}
 	return result;
 }
+int get_row()
+{
+	return cursor.y;
+}
+int get_col()
+{
+	return cursor.x;
+}
 int get_rows()
 {
 	return rows;
@@ -44,7 +138,7 @@ int create_vga_font()
 	const int vga_count=(sizeof(vga737_bin)/12);
 	const int total=vga_count+(sizeof(block_elements)/12);
 	if(vgargb==0)
-		vgargb=malloc(8*12*total);
+		vgargb=calloc(8*12*total,1);
 	if(vgargb){
 		int i,j,k;
 		for(k=0;k<total;k++){
@@ -73,26 +167,63 @@ int create_vga_font()
 }
 int paint_window(HWND hwnd,HDC hdc)
 {
-	PAINTSTRUCT ps;
-	BITMAPINFO bmi;
+	int i,cell_count;
+	int xoffset,yoffset;
+	struct TMP{
+		BITMAPINFOHEADER bmiHeader;
+		DWORD colors[2];
+	};
+	struct TMP bmi={0};
+	char *font=vgargb;
 
-	hdc=BeginPaint(hwnd,&ps);
-	memset(&bmi,0,sizeof(BITMAPINFO));
-	bmi.bmiHeader.biBitCount=24;
-	bmi.bmiHeader.biWidth=cwidth*cols;
-	bmi.bmiHeader.biHeight=cheight*rows;
+	if(!vgargb)
+		return 0;
+	if(rows==0 || cols==0)
+		return 0;
+	bmi.bmiHeader.biBitCount=8;
+	bmi.bmiHeader.biWidth=8;
+	bmi.bmiHeader.biHeight=12;
 	bmi.bmiHeader.biPlanes=1;
-	bmi.bmiHeader.biSize=sizeof(bmi);
-	/*
-	SetDIBitsToDevice(hdc,0,Y_OFFSET,W,H,0,0,0,H,buffer,&bmi,DIB_RGB_COLORS);
+	bmi.bmiHeader.biSizeImage=8*12;
+	bmi.bmiHeader.biXPelsPerMeter=12;
+	bmi.bmiHeader.biYPelsPerMeter=12;
+	bmi.bmiHeader.biSize=sizeof(BITMAPINFOHEADER);
+	cell_count=rows*cols;
+	xoffset=0;
+	yoffset=0;
+
+	for(i=0;i<cell_count;i++){
+		unsigned short a;
+		int x,y;
+		CELL *cell=&cells[i];
+		bmi.colors[0]=cell->bg;
+		bmi.colors[1]=cell->fg;
+		a=cell->val&0xFF;
+		if(a!=0)
+			a=a;
+		if(cell->fg!=0)
+			a=a;
+		x=i%cols;
+		x*=8;
+		x+=xoffset;
+		y=i/cols;
+		y*=12;
+		y+=yoffset;
+		SetDIBitsToDevice(hdc,x,y,8,12,
+			0,0, //src xy
+			0,12, //startscan,scanlines
+			font+a*12*8,
+			(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
+	}
 	{
 		RECT rect;
-		int dw=0,dh=0;
-		GetWindowRect(hwnd,&rect);
-		StretchDIBits(hdc,0,Y_OFFSET,W+dw,H+dh,0,0,W,H,buffer,&bmi,DIB_RGB_COLORS,SRCCOPY);
-
+		rect.left=cursor.x*8;
+		rect.left+=xoffset;
+		rect.top=cursor.y*12;
+		rect.top+=yoffset;
+		rect.right=rect.left+8;
+		rect.bottom=rect.top+12;
+		DrawFocusRect(hdc,&rect);
 	}
-	*/
-	EndPaint(hwnd,&ps);
 	return 0;
 }
