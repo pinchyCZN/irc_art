@@ -17,15 +17,66 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	}
 	switch(msg){
 	case WM_GETDLGCODE:
-		return DLGC_WANTARROWS;
+		return DLGC_WANTARROWS|DLGC_WANTCHARS|DLGC_WANTMESSAGE|DLGC_WANTALLKEYS;
 		break;
 	case WM_LBUTTONDOWN:
 		{
 			int x,y;
 			x=LOWORD(lparam);
 			y=HIWORD(lparam);
-			mouse_click(x,y);
-			InvalidateRect(GetDlgItem(hwnd,IDC_IMAGE),NULL,TRUE);
+			image_click(x,y,MK_LBUTTON);
+			InvalidateRect(hwnd,NULL,TRUE);
+		}
+		break;
+	case WM_MOUSEMOVE:
+		{
+			int x,y;
+			int flags;
+			x=LOWORD(lparam);
+			y=HIWORD(lparam);
+			flags=wparam;
+			if(flags&MK_CONTROL){
+				if(flags&MK_LBUTTON){
+					map_pixel_cell(&x,&y);
+					set_bg(get_color_fg(),x,y);
+				}else if(flags&MK_RBUTTON){
+					map_pixel_cell(&x,&y);
+					set_fg(get_color_bg(),x,y);
+				}
+			}else if(!(flags&MK_SHIFT)){
+			}
+			printf("x=%i y=%i\n",x,y);
+		}
+		break;
+	case WM_CHAR:
+		{
+			int x,y;
+			int code=wparam;
+			int ctrl=GetKeyState(VK_CONTROL)&0x8000;
+			int shift=GetKeyState(VK_SHIFT)&0x8000;
+			if(code>=' ' && code<=0x7F){
+				if(ctrl)
+					break;
+				if(shift){
+					int caps=GetKeyState(VK_CAPITAL)&1;
+					if(caps)
+						code=tolower(code);
+					else
+						code=toupper(code);
+				}
+				x=get_col();
+				y=get_row();
+				set_char(code,x,y);
+				set_fg(get_color_fg(),x,y);
+				move_cursor(1,0);
+			}else if('\r'==code){
+				move_cursor(0,1);
+			}else if('\b'==code){
+				move_cursor(-1,0);
+				x=get_col();
+				y=get_row();
+				set_char(' ',x,y);
+			}
 		}
 		break;
 	case WM_KEYDOWN:
@@ -46,16 +97,18 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			case VK_DOWN:
 				move_cursor(0,1);
 				break;
-			default:
-				if(!(ctrl || shift)){
+			case VK_ESCAPE:
+				PostQuitMessage(0);
+				break;
+			case VK_DELETE:
+				{
 					int x,y;
 					x=get_col();
 					y=get_row();
-					set_char(vkey,x,y);
-					set_fg(0xFFFF,x,y);
-					set_fg(rand()&0xFFFF,x,y);
-					move_cursor(1,0);
+					set_char(' ',x,y);
 				}
+				break;
+			default:
 				break;
 			}
 			InvalidateRect(hwnd,NULL,TRUE);
@@ -64,16 +117,58 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	}
 	CallWindowProc(old_image_proc,hwnd,msg,wparam,lparam);
 }
+
+WNDPROC old_palette_proc=0;
+LRESULT CALLBACK palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+	switch(msg){
+	case WM_LBUTTONDOWN:
+	case WM_MBUTTONDOWN:
+	case WM_RBUTTONDOWN:
+		{
+			int x,y;
+			HWND htmp;
+			x=LOWORD(lparam);
+			y=HIWORD(lparam);
+			palette_click(x,y,msg);
+			if(htmp=GetDlgItem(hmaindlg,IDC_FG))
+				InvalidateRect(htmp,NULL,TRUE);
+			if(htmp=GetDlgItem(hmaindlg,IDC_BG))
+				InvalidateRect(htmp,NULL,TRUE);
+			PostMessage(hmaindlg,WM_APP,0,0);
+		}
+		break;
+	}
+	CallWindowProc(old_palette_proc,hwnd,msg,wparam,lparam);
+}
+
 BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
-		print_msg(msg,wparam,lparam,hwnd);
+	static HWND hgrip=0;
+	//if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
+	//	print_msg(msg,wparam,lparam,hwnd);
 	switch(msg){
 	case WM_INITDIALOG:
 		create_vga_font();
+		init_colors();
 		update_cells(get_rows(),get_cols());
 		old_image_proc=SetWindowLong(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,image_proc);
+		old_palette_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,palette_proc);
 		SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
+		hgrip=create_grippy(hwnd);
+		init_main_win_anchor(hwnd);
+		break;
+	case WM_SIZE:
+		{
+			grippy_move(hwnd,hgrip);
+			resize_main_win(hwnd);
+		}
+		break;
+	case WM_APP:
+		{
+			if(0==wparam)
+				SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
+		}
 		break;
 	case WM_COMMAND:
 		{
@@ -87,11 +182,33 @@ BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	case WM_DRAWITEM:
 		{
 			DRAWITEMSTRUCT *di=lparam;
-			if(di && IDC_IMAGE==di->CtlID){
-				HWND htmp=di->hwndItem;
-				HDC hdc=di->hDC;
-				paint_window(htmp,hdc);
-				return TRUE;
+			if(!di)
+				break;
+			switch(di->CtlID){
+			case IDC_IMAGE:
+				{
+					HWND htmp=di->hwndItem;
+					HDC hdc=di->hDC;
+					paint_window(htmp,hdc);
+					return TRUE;
+				}
+				break;
+			case IDC_COLORS:
+				{
+					HWND htmp=di->hwndItem;
+					HDC hdc=di->hDC;
+					paint_colors(htmp,hdc);
+					return TRUE;
+				}
+				break;
+			case IDC_FG:
+			case IDC_BG:
+				{
+					HWND htmp=di->hwndItem;
+					HDC hdc=di->hDC;
+					paint_current_colors(htmp,hdc,di->CtlID);
+				}
+				break;
 			}
 		}
 		break;

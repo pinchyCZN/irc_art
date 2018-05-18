@@ -34,7 +34,7 @@ int move_cursor(int x,int y)
 		cursor.x=0;
 	return 1;
 }
-int mouse_click(int x,int y)
+int image_click(int x,int y,int msg)
 {
 	x/=CELL_WIDTH;
 	y/=CELL_HEIGHT;
@@ -85,6 +85,17 @@ int set_bg(int bg,int x,int y)
 	cell->bg=bg;
 	result=TRUE;
 	return result;
+}
+int map_pixel_cell(int *_x,int *_y)
+{
+	int x,y;
+	x=*_x;
+	y=*_y;
+	x/=CELL_WIDTH;
+	y/=CELL_HEIGHT;
+	*_x=x;
+	*_y=y;
+	return 1;
 }
 int set_char(int key,int x,int y)
 {
