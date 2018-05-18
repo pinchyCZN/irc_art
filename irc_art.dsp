@@ -109,6 +109,10 @@ SOURCE=.\irc_art_editor.c
 
 SOURCE=.\paint_window.c
 # End Source File
+# Begin Source File
+
+SOURCE=.\palette.c
+# End Source File
 # End Group
 # Begin Group "Header Files"
 

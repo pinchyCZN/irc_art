@@ -25,7 +25,7 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			x=LOWORD(lparam);
 			y=HIWORD(lparam);
 			image_click(x,y,MK_LBUTTON);
-			InvalidateRect(hwnd,NULL,TRUE);
+			InvalidateRect(hwnd,NULL,FALSE);
 		}
 		break;
 	case WM_MOUSEMOVE:
@@ -37,15 +37,22 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			flags=wparam;
 			if(flags&MK_CONTROL){
 				if(flags&MK_LBUTTON){
+					image_click(x,y,0);
 					map_pixel_cell(&x,&y);
 					set_bg(get_color_fg(),x,y);
 				}else if(flags&MK_RBUTTON){
+					image_click(x,y,0);
 					map_pixel_cell(&x,&y);
 					set_fg(get_color_bg(),x,y);
 				}
-			}else if(!(flags&MK_SHIFT)){
+			}else if(flags&MK_SHIFT){
 			}
-			printf("x=%i y=%i\n",x,y);
+			else{
+				if(flags&MK_LBUTTON){
+					image_click(x,y,MK_LBUTTON);
+					InvalidateRect(hwnd,NULL,FALSE);
+				}
+			}
 		}
 		break;
 	case WM_CHAR:
@@ -64,8 +71,8 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					else
 						code=toupper(code);
 				}
-				x=get_col();
-				y=get_row();
+				x=get_cursor_x();
+				y=get_cursor_y();
 				set_char(code,x,y);
 				set_fg(get_color_fg(),x,y);
 				move_cursor(1,0);
@@ -73,8 +80,8 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				move_cursor(0,1);
 			}else if('\b'==code){
 				move_cursor(-1,0);
-				x=get_col();
-				y=get_row();
+				x=get_cursor_x();
+				y=get_cursor_y();
 				set_char(' ',x,y);
 			}
 		}
@@ -103,15 +110,15 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			case VK_DELETE:
 				{
 					int x,y;
-					x=get_col();
-					y=get_row();
+					x=get_cursor_x();
+					y=get_cursor_y();
 					set_char(' ',x,y);
 				}
 				break;
 			default:
 				break;
 			}
-			InvalidateRect(hwnd,NULL,TRUE);
+			InvalidateRect(hwnd,NULL,FALSE);
 		}
 		break;
 	}
@@ -132,16 +139,44 @@ LRESULT CALLBACK palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			y=HIWORD(lparam);
 			palette_click(x,y,msg);
 			if(htmp=GetDlgItem(hmaindlg,IDC_FG))
-				InvalidateRect(htmp,NULL,TRUE);
+				InvalidateRect(htmp,NULL,FALSE);
 			if(htmp=GetDlgItem(hmaindlg,IDC_BG))
-				InvalidateRect(htmp,NULL,TRUE);
+				InvalidateRect(htmp,NULL,FALSE);
 			PostMessage(hmaindlg,WM_APP,0,0);
 		}
 		break;
 	}
 	CallWindowProc(old_palette_proc,hwnd,msg,wparam,lparam);
 }
+WNDPROC old_edit_proc=0;
+LRESULT CALLBACK edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+	switch(msg){
+	case WM_KEYDOWN:
+		{
+			int key=wparam;
+			if(VK_UP){
 
+			}else if(VK_DOWN){
+
+			}
+		}
+		break;
+	}
+	CallWindowProc(old_edit_proc,hwnd,msg,wparam,lparam);
+}
+int display_image_size(HWND hwnd)
+{
+	char tmp[40]={0};
+	int w,h;
+	w=get_cols();
+	h=get_rows();
+	_snprintf(tmp,sizeof(tmp),"%i",w);
+	SetDlgItemText(hwnd,IDC_COLS,tmp);
+	_snprintf(tmp,sizeof(tmp),"%i",h);
+	SetDlgItemText(hwnd,IDC_ROWS,tmp);
+	return 0;
+}
 BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static HWND hgrip=0;
@@ -152,8 +187,11 @@ BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		create_vga_font();
 		init_colors();
 		update_cells(get_rows(),get_cols());
+		display_image_size(hwnd);
 		old_image_proc=SetWindowLong(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,image_proc);
 		old_palette_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,palette_proc);
+		old_edit_proc=SetWindowLong(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,edit_proc);
+		old_edit_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,edit_proc);
 		SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
 		hgrip=create_grippy(hwnd);
 		init_main_win_anchor(hwnd);

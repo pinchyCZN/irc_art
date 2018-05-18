@@ -128,11 +128,11 @@ int update_cells(int w,int h)
 	}
 	return result;
 }
-int get_row()
+int get_cursor_y()
 {
 	return cursor.y;
 }
-int get_col()
+int get_cursor_x()
 {
 	return cursor.x;
 }
