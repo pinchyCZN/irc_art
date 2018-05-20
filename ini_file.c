@@ -237,7 +237,7 @@ LRESULT CALLBACK install_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 int do_install_dialog(char *path_param)
 {
 	extern HINSTANCE ghinstance;
-	return DialogBoxParam(ghinstance,IDD_INSTALL_DIALOG,NULL,install_proc,path_param);
+	return DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_INSTALL_DIALOG),NULL,install_proc,(LPARAM)path_param);
 }
 int init_ini_file()
 {

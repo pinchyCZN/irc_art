@@ -1,4 +1,5 @@
 #include <windows.h>
+#include <math.h>
 #include "resource.h"
 
 int color_lookup[]={
@@ -117,6 +118,60 @@ int get_bgr(int rgb)
 	c|=rgb&0xFF00;
 	return c;
 }
+int get_rgb(int bgr)
+{
+	int c;
+	c=(bgr&0xFF)<<16;
+	c|=(bgr>>16)&0xFF;
+	c|=bgr&0xFF00;
+	return c;
+}
+int get_nearest_color(int rgb)
+{
+	int result=0;
+	int r,g,b;
+	double f,min=1000000;
+	int i,index=-1;
+	r=(rgb>>16)&0xFF;
+	g=(rgb>>8)&0xFF;
+	b=rgb&0xFF;
+	for(i=0;i<sizeof(color_lookup)/sizeof(int);i++){
+		int x,y,z;
+		int tmp=color_lookup[i];
+		x=(tmp>>16)&0xFF;
+		y=(tmp>>8)&0xFF;
+		z=tmp&0xFF;
+		f=sqrt(pow(x-r,2)+pow(y-b,2)+pow(z-g,2));
+		if(f<min){
+			min=f;
+			index=i;
+		}
+	}
+	if(index>=0)
+		result=color_lookup[index];
+	return result;
+}
+int get_pal_index(int rgb)
+{
+	int result=0;
+	int i;
+	static int last_rgb=-1;
+	static int last_index=-1;
+	if(last_index>=0){
+		if(rgb==last_rgb)
+			return last_index;
+	}
+	for(i=0;i<sizeof(color_lookup)/sizeof(int);i++){
+		int c=color_lookup[i];
+		if(c==rgb){
+			last_rgb=rgb;
+			last_index=i;
+			result=i;
+			break;
+		}
+	}
+	return result;
+}
 int get_cindex(int x,int y,int w,int h)
 {
 	int index,size;
@@ -205,7 +260,6 @@ int paint_current_colors(HWND hwnd,HDC hdc,int id)
 		c=current_fg;
 	else
 		c=current_bg;
-	//c=get_bgr(c);
 	GetWindowRect(hwnd,&rect);
 	w=rect.right-rect.left;
 	h=rect.bottom-rect.top;

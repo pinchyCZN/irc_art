@@ -64,7 +64,7 @@ BEGIN
     LTEXT           "BG",IDC_STATIC,280,17,11,8
     CONTROL         "FG",IDC_FG,"Button",BS_OWNERDRAW | WS_TABSTOP,296,0,29,
                     14
-    CONTROL         "BG",IDC_BG,"Button",BS_OWNERDRAW | WS_TABSTOP,295,17,30,
+    CONTROL         "BG",IDC_BG,"Button",BS_OWNERDRAW | WS_TABSTOP,296,17,30,
                     14
     LTEXT           "ROWS",IDC_STATIC,382,3,24,8
     LTEXT           "COLUMNS",IDC_STATIC,371,17,36,8
@@ -75,6 +75,7 @@ BEGIN
     CONTROL         "EXT COLORS",IDC_EXT_COLORS,"Button",BS_OWNERDRAW | 
                     WS_TABSTOP,396,39,43,206
     SCROLLBAR       IDC_EXTC_SBAR,441,39,10,205,SBS_VERT
+    PUSHBUTTON      "File",IDC_FILE,335,0,37,14
 END
 
 IDD_INSTALL_DIALOG DIALOG DISCARDABLE  0, 0, 358, 92
@@ -102,8 +103,30 @@ END
 
 IDR_MENU1 MENU DISCARDABLE 
 BEGIN
-    MENUITEM "&File",                       65535
+    POPUP "&File"
+    BEGIN
+        MENUITEM "File &open",                  IDM_FILEOPEN
+        MENUITEM "&Save",                       IDM_SAVE
+        MENUITEM "Save &as",                    IDM_SAVEAS
+        MENUITEM "&Copy to clipboard",          IDM_COPYTOCLIP
+    END
 END
+
+
+/////////////////////////////////////////////////////////////////////////////
+//
+// DESIGNINFO
+//
+
+#ifdef APSTUDIO_INVOKED
+GUIDELINES DESIGNINFO DISCARDABLE 
+BEGIN
+    IDD_MAINDLG, DIALOG
+    BEGIN
+        VERTGUIDE, 296
+    END
+END
+#endif    // APSTUDIO_INVOKED
 
 #endif    // English (U.S.) resources
 /////////////////////////////////////////////////////////////////////////////

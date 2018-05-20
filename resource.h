@@ -19,14 +19,19 @@
 #define IDC_EXTC_SBAR                   1008
 #define IDC_TXT_APPDATA                 1009
 #define IDC_NO_INI                      1010
+#define IDC_FILE                        1010
+#define IDM_SAVE                        40001
+#define IDM_COPYTOCLIP                  40002
+#define IDM_FILEOPEN                    40004
+#define IDM_SAVEAS                      40005
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        103
-#define _APS_NEXT_COMMAND_VALUE         40001
-#define _APS_NEXT_CONTROL_VALUE         1010
+#define _APS_NEXT_COMMAND_VALUE         40006
+#define _APS_NEXT_CONTROL_VALUE         1011
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

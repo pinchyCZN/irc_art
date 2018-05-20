@@ -11,10 +11,14 @@ HWND hmaindlg=0;
 WNDPROC old_image_proc=0;
 LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
+	static void *state=0;
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
 	}
+	if(!state)
+		alloc_state(&state);
+	save_current_state(state);
 	switch(msg){
 	case WM_GETDLGCODE:
 		return DLGC_WANTARROWS|DLGC_WANTCHARS|DLGC_WANTMESSAGE|DLGC_WANTALLKEYS;
@@ -25,7 +29,6 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			x=LOWORD(lparam);
 			y=HIWORD(lparam);
 			image_click(x,y,MK_LBUTTON);
-			InvalidateRect(hwnd,NULL,FALSE);
 		}
 		break;
 	case WM_MOUSEMOVE:
@@ -39,18 +42,17 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				if(flags&MK_LBUTTON){
 					image_click(x,y,0);
 					map_pixel_cell(&x,&y);
-					set_bg(get_color_fg(),x,y);
+					set_fg(get_color_fg(),x,y);
 				}else if(flags&MK_RBUTTON){
 					image_click(x,y,0);
 					map_pixel_cell(&x,&y);
-					set_fg(get_color_bg(),x,y);
+					set_bg(get_color_bg(),x,y);
 				}
 			}else if(flags&MK_SHIFT){
 			}
 			else{
 				if(flags&MK_LBUTTON){
 					image_click(x,y,MK_LBUTTON);
-					InvalidateRect(hwnd,NULL,FALSE);
 				}
 			}
 		}
@@ -118,11 +120,13 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			default:
 				break;
 			}
-			InvalidateRect(hwnd,NULL,FALSE);
 		}
 		break;
 	}
-	CallWindowProc(old_image_proc,hwnd,msg,wparam,lparam);
+	if(state_changed(state))
+		InvalidateRect(hwnd,NULL,FALSE);
+
+	return CallWindowProc(old_image_proc,hwnd,msg,wparam,lparam);
 }
 
 WNDPROC old_palette_proc=0;
@@ -146,7 +150,19 @@ LRESULT CALLBACK palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		}
 		break;
 	}
-	CallWindowProc(old_palette_proc,hwnd,msg,wparam,lparam);
+	return CallWindowProc(old_palette_proc,hwnd,msg,wparam,lparam);
+}
+int get_wnd_int(HWND hwnd)
+{
+	char str[10]={0};
+	GetWindowText(hwnd,str,sizeof(str));
+	return atoi(str);
+}
+int set_wind_int(HWND hwnd,int val)
+{
+	char str[10]={0};
+	_snprintf(str,sizeof(str),"%i",val);
+	return SetWindowText(hwnd,str);
 }
 WNDPROC old_edit_proc=0;
 LRESULT CALLBACK edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -155,15 +171,36 @@ LRESULT CALLBACK edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	case WM_KEYDOWN:
 		{
 			int key=wparam;
-			if(VK_UP){
-
-			}else if(VK_DOWN){
-
+			int dir=0;
+			if(VK_UP==key)
+				dir=1;
+			else if(VK_DOWN==key)
+				dir=-1;
+			if(dir){
+				int w,h;
+				int id;
+				int x=get_wnd_int(hwnd);
+				x+=dir;
+				if(x<1)
+					x=1;
+				else if(x>500)
+					x=500;
+				id=GetDlgCtrlID(hwnd);
+				if(IDC_ROWS==id){
+					w=get_cols();
+					h=x;
+				}else{
+					w=x;
+					h=get_rows();
+				}
+				resize_grid(w,h);
+				set_wind_int(hwnd,x);
+				InvalidateRect(GetDlgItem(hmaindlg,IDC_IMAGE),NULL,TRUE);
 			}
 		}
 		break;
 	}
-	CallWindowProc(old_edit_proc,hwnd,msg,wparam,lparam);
+	return CallWindowProc(old_edit_proc,hwnd,msg,wparam,lparam);
 }
 int display_image_size(HWND hwnd)
 {
@@ -180,21 +217,23 @@ int display_image_size(HWND hwnd)
 BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static HWND hgrip=0;
-	//if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
-	//	print_msg(msg,wparam,lparam,hwnd);
+	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
+		print_msg(msg,wparam,lparam,hwnd);
 	switch(msg){
 	case WM_INITDIALOG:
 		create_vga_font();
 		init_colors();
-		update_cells(get_rows(),get_cols());
+		resize_grid(50,80);
 		display_image_size(hwnd);
-		old_image_proc=SetWindowLong(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,image_proc);
-		old_palette_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,palette_proc);
-		old_edit_proc=SetWindowLong(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,edit_proc);
-		old_edit_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,edit_proc);
+		old_image_proc=SetWindowLong(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,(LONG)image_proc);
+		old_palette_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,(LONG)palette_proc);
+		old_edit_proc=SetWindowLong(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,(LONG)edit_proc);
+		old_edit_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,(LONG)edit_proc);
 		SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
 		hgrip=create_grippy(hwnd);
 		init_main_win_anchor(hwnd);
+		SendMessage(GetDlgItem(hwnd,IDC_ROWS),EM_LIMITTEXT,4,0);
+		SendMessage(GetDlgItem(hwnd,IDC_COLS),EM_LIMITTEXT,4,0);
 		break;
 	case WM_SIZE:
 		{
@@ -211,9 +250,35 @@ BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	case WM_COMMAND:
 		{
 			int idc=LOWORD(wparam);
-			if(IDCANCEL==idc){
+			switch(idc){
+			case IDM_SAVE:
+				file_save(hwnd);
+				break;
+			case IDM_SAVEAS:
+				file_saveas(hwnd);
+				break;
+			case IDM_FILEOPEN:
+				file_open(hwnd);
+				break;
+			case IDM_COPYTOCLIP:
+				break;
+			case IDCANCEL:
 				DestroyWindow(hwnd);
 				PostQuitMessage(0);
+				break;
+			case IDC_FILE:
+				{
+					static HMENU hmenu=0;
+					if(!hmenu)
+						hmenu=LoadMenu(ghinstance,MAKEINTRESOURCE(IDR_MENU1));
+					if(hmenu){
+						HMENU hsubm=GetSubMenu(hmenu,0);
+						POINT p={0};
+						GetCursorPos(&p);
+						TrackPopupMenu(hsubm,TPM_CENTERALIGN,p.x,p.y,0,hwnd,NULL);
+					}
+				}
+				break;
 			}
 		}
 		break;
@@ -272,6 +337,7 @@ int WINAPI WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,in
 {
 	INITCOMMONCONTROLSEX ctrls;
 
+	ghinstance=hinstance;
 	ctrls.dwSize=sizeof(ctrls);
 	ctrls.dwICC=ICC_LISTVIEW_CLASSES|ICC_TREEVIEW_CLASSES|ICC_BAR_CLASSES|ICC_TAB_CLASSES|ICC_PROGRESS_CLASS|ICC_HOTKEY_CLASS;
 	InitCommonControlsEx(&ctrls);
