@@ -28,18 +28,6 @@ int init_ofn(OPENFILENAMEW *ofn,WCHAR *title,HWND hwnd)
 	ofn->Flags=OFN_ENABLESIZING;
 	return TRUE;
 }
-int file_open(HWND hwnd)
-{
-	int result=FALSE;
-	OPENFILENAMEW ofn={0};
-	WCHAR tmp[MAX_PATH]={0};
-	init_ofn(&ofn,L"Open",hwnd);
-	ofn.lpstrFile=tmp;
-	ofn.nMaxFile=sizeof(tmp)/sizeof(WCHAR);
-	if(GetOpenFileNameW(&ofn)){
-	}
-	return result;
-}
 int write_image(WCHAR *fname)
 {
 	int result=FALSE;
@@ -218,7 +206,8 @@ int get_str_dimensions(char *str,int *width,int *height)
 				if(3==a)
 					state=1;
 				else{
-					counter++;
+					if(!(a==2 || a==0x1D || a==0x1F || a==0x16 || a==0xF))
+						counter++;
 				}
 				num_count=0;
 				break;
@@ -257,10 +246,173 @@ int get_str_dimensions(char *str,int *width,int *height)
 			}
 		}
 	}
+	if(0==line_count){
+		if(max_width>0)
+			line_count=1;
+		else if(counter>0){
+			line_count=1;
+			max_width=counter;
+		}
+	}
 	*width=max_width;
 	*height=line_count;
 	return 1;
 }
+int process_str(char *str)
+{
+	int index=0;
+	int state=0;
+	int num_count,fg,bg;
+	int x=0,y=0;
+	int max_x,max_y;
+	int a;
+	max_x=get_cols();
+	max_y=get_rows();
+	fg=1;
+	bg=0;
+	while(fetch_next_char(str,&index,&a)){
+		if(0==a)
+			break;
+		if('\r'==a || '\n'==a){
+			fg=1;
+			bg=0;
+			x=0;
+			if(a=='\n')
+				y++;
+			if(y>=max_y)
+				break;
+		}else{
+			switch(state){
+			case 0:
+WRITE_CELL:
+				if(3==a)
+					state=1;
+				else{
+					if(!(a==2 || a==0x1D || a==0x1F || a==0x16 || a==0xF)){
+						set_fg(get_color_val(fg),x,y);
+						set_bg(get_color_val(bg),x,y);
+						set_char(a,x,y);
+						x++;
+					}
+				}
+				num_count=0;
+				break;
+			case 1:
+				if(a>='0' && a<='9'){
+					if(0==num_count)
+						fg=a-'0';
+					else{
+						fg*=10;
+						fg+=a-'0';
+					}
+					num_count++;
+					if(num_count>=2){
+						state=2;
+					}
+				}else if(a==','){
+					state=3;
+					num_count=0;
+				}else{
+					state=0;
+					goto WRITE_CELL;
+				}
+				break;
+			case 2: //check for ,
+				if(a==','){
+					state=3;
+					num_count=0;
+				}else{
+					state=0;
+					goto WRITE_CELL;
+				}
+				break;
+			case 3: //number after ,
+				if(a>='0' && a<='9'){
+					if(0==num_count)
+						bg=a-'0';
+					else{
+						bg*=10;
+						bg+=a-'0';
+					}
+					num_count++;
+					if(num_count>=2)
+						state=0;
+				}else{
+					state=0;
+					goto WRITE_CELL;
+				}
+				break;
+			}
+		}
+	}
+	return 1;
+
+}
 int import_txt(char *str)
 {
+	int result=FALSE;
+	int width=0,height=0;
+	get_str_dimensions(str,&width,&height);
+	if(width<=0 || height<=0){
+		return result;
+	}
+	if(width>500)
+		width=500;
+	if(height>1000)
+		height=1000;
+	if(resize_grid(width,height))
+		result=process_str(str);
+	return result;
+}
+int file_open(HWND hwnd)
+{
+	int result=FALSE;
+	OPENFILENAMEW ofn={0};
+	WCHAR tmp[MAX_PATH]={0};
+	init_ofn(&ofn,L"Open",hwnd);
+	ofn.lpstrFile=tmp;
+	ofn.nMaxFile=sizeof(tmp)/sizeof(WCHAR);
+	if(GetOpenFileNameW(&ofn)){
+		FILE *f;
+		f=_wfopen(tmp,L"rb");
+		if(f){
+			char *str;
+			int str_size=0x100000;
+			str=calloc(str_size,1);
+			if(str)
+				fread(str,1,str_size,f);
+			fclose(f);
+			if(str){
+				str[str_size-1]=0;
+				result=process_str(str);
+				free(str);
+			}
+		}
+	}
+	if(result)
+		PostMessage(hwnd,WM_APP,1,0);
+	return result;
+}
+
+int import_clipboard(HWND hwnd)
+{
+	int result=FALSE;
+	if(OpenClipboard(NULL)){
+		HANDLE htxt=GetClipboardData(CF_TEXT);
+		if(htxt){
+			char *str=GlobalLock(htxt);
+			if(str){
+				char *tmp=strdup(str);
+				GlobalUnlock(htxt);
+				if(tmp){
+					result=import_txt(tmp);
+					free(tmp);
+				}
+			}
+		}
+		CloseClipboard();
+	}
+	if(result)
+		PostMessage(hwnd,WM_APP,1,0);
+	return result;
 }

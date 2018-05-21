@@ -63,7 +63,7 @@ int state_changed(STATE *s)
 	}
 	return result;
 }
-int emit_color_str(char *buf,int buf_size,int offset,int val)
+int emit_color_str(char *buf,int buf_size,int offset,int val,int full)
 {
 	int result=0;
 	int i,div;
@@ -76,8 +76,10 @@ int emit_color_str(char *buf,int buf_size,int offset,int val)
 		int x=val/div;
 		x=x%10;
 		div=1;
-		if(0==i && 0==x)
-			continue;
+		if(!full){
+			if(0==i && 0==x)
+				continue;
+		}
 		buf[offset++]=x+'0';
 		result++;
 		if(offset>=buf_size)
@@ -94,6 +96,20 @@ int emit_char(char *buf,int buf_size,int offset,int val)
 		val=' ';
 	buf[offset++]=val;
 	result++;
+	return result;
+}
+int is_cell_num(int x,int y)
+{
+	int result=FALSE;
+	if(x>=0 && x<cols){
+		if(y>=0 && y<rows){
+			int a;
+			CELL *c=&cells[x+y*cols];
+			a=c->val;
+			if(a>='0' && a<='9')
+				result=TRUE;
+		}
+	}
 	return result;
 }
 //3FG,BG
@@ -123,13 +139,17 @@ int get_image_txt(char **txt,int *txt_size)
 				if(index>=buf_size)
 					break;
 				if(emit_fg){
-					index+=emit_color_str(buf,buf_size,index,get_pal_index(c->fg));
+					int full=FALSE;
+					if(!emit_bg)
+						full=is_cell_num(j+1,i);
+					index+=emit_color_str(buf,buf_size,index,get_pal_index(c->fg),full);
 				}
 				if(emit_bg){
+					int full=is_cell_num(j+1,i);
 					if(index>=buf_size)
 						break;
 					buf[index++]=',';
-					index+=emit_color_str(buf,buf_size,index,get_pal_index(c->bg));
+					index+=emit_color_str(buf,buf_size,index,get_pal_index(c->bg),full);
 				}
 			}
 			index+=emit_char(buf,buf_size,index,c->val);

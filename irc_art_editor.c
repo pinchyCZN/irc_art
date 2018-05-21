@@ -8,6 +8,27 @@
 HINSTANCE ghinstance=0;
 HWND hmaindlg=0;
 
+int process_mouse(int flags,int x,int y)
+{
+	if(flags&MK_CONTROL){
+		if(flags&MK_LBUTTON){
+			image_click(x,y,0);
+			map_pixel_cell(&x,&y);
+			set_fg(get_color_fg(),x,y);
+		}else if(flags&MK_RBUTTON){
+			image_click(x,y,0);
+			map_pixel_cell(&x,&y);
+			set_bg(get_color_bg(),x,y);
+		}
+	}else if(flags&MK_SHIFT){
+	}
+	else{
+		if(flags&MK_LBUTTON){
+			image_click(x,y,MK_LBUTTON);
+		}
+	}
+	return 0;
+}
 WNDPROC old_image_proc=0;
 LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -28,7 +49,7 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			int x,y;
 			x=LOWORD(lparam);
 			y=HIWORD(lparam);
-			image_click(x,y,MK_LBUTTON);
+			process_mouse(MK_LBUTTON,x,y);
 		}
 		break;
 	case WM_MOUSEMOVE:
@@ -38,23 +59,7 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			x=LOWORD(lparam);
 			y=HIWORD(lparam);
 			flags=wparam;
-			if(flags&MK_CONTROL){
-				if(flags&MK_LBUTTON){
-					image_click(x,y,0);
-					map_pixel_cell(&x,&y);
-					set_fg(get_color_fg(),x,y);
-				}else if(flags&MK_RBUTTON){
-					image_click(x,y,0);
-					map_pixel_cell(&x,&y);
-					set_bg(get_color_bg(),x,y);
-				}
-			}else if(flags&MK_SHIFT){
-			}
-			else{
-				if(flags&MK_LBUTTON){
-					image_click(x,y,MK_LBUTTON);
-				}
-			}
+			process_mouse(flags,x,y);
 		}
 		break;
 	case WM_CHAR:
@@ -91,6 +96,9 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					if(!shift){
 						if(3==code)
 							image_to_clipboard();
+						else if(0x16==code){
+							import_clipboard(hmaindlg);
+						}
 					}
 					break;
 				}
@@ -102,18 +110,26 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			int vkey=wparam;
 			int ctrl=GetKeyState(VK_CONTROL)&0x8000;
 			int shift=GetKeyState(VK_SHIFT)&0x8000;
+			int process=FALSE;
+			int ox,oy;
+			ox=get_cursor_x();
+			oy=get_cursor_y();
 			switch(vkey){
 			case VK_LEFT:
 				move_cursor(-1,0);
+				process=TRUE;
 				break;
 			case VK_RIGHT:
 				move_cursor(1,0);
+				process=TRUE;
 				break;
 			case VK_UP:
 				move_cursor(0,-1);
+				process=TRUE;
 				break;
 			case VK_DOWN:
 				move_cursor(0,1);
+				process=TRUE;
 				break;
 			case VK_ESCAPE:
 				PostQuitMessage(0);
@@ -128,6 +144,18 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				break;
 			default:
 				break;
+			}
+			if(process){
+				int x,y;
+				x=get_cursor_x();
+				y=get_cursor_y();
+				if(ctrl){
+					set_bg(get_color_bg(),ox,oy);
+					set_bg(get_color_bg(),x,y);
+				}else if(shift){
+					set_fg(get_color_fg(),ox,oy);
+					set_fg(get_color_fg(),x,y);
+				}
 			}
 		}
 		break;
@@ -252,8 +280,15 @@ BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		break;
 	case WM_APP:
 		{
-			if(0==wparam)
+			switch(wparam){
+			case 0:
 				SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
+				break;
+			case 1:
+				InvalidateRect(GetDlgItem(hwnd,IDC_IMAGE),0,TRUE);
+				display_image_size(hwnd);
+				break;
+			}
 		}
 		break;
 	case WM_COMMAND:

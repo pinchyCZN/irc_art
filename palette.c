@@ -172,6 +172,13 @@ int get_pal_index(int rgb)
 	}
 	return result;
 }
+int get_color_val(int index)
+{
+	int size=sizeof(color_lookup)/sizeof(int);
+	if(index<0 || index>=size)
+		index=0;
+	return color_lookup[index];
+}
 int get_cindex(int x,int y,int w,int h)
 {
 	int index,size;
