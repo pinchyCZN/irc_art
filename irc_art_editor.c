@@ -64,8 +64,9 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			int ctrl=GetKeyState(VK_CONTROL)&0x8000;
 			int shift=GetKeyState(VK_SHIFT)&0x8000;
 			if(code>=' ' && code<=0x7F){
-				if(ctrl)
+				if(ctrl){
 					break;
+				}
 				if(shift){
 					int caps=GetKeyState(VK_CAPITAL)&1;
 					if(caps)
@@ -85,6 +86,14 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				x=get_cursor_x();
 				y=get_cursor_y();
 				set_char(' ',x,y);
+			}else{
+				if(ctrl){
+					if(!shift){
+						if(3==code)
+							image_to_clipboard();
+					}
+					break;
+				}
 			}
 		}
 		break;
@@ -261,6 +270,7 @@ BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				file_open(hwnd);
 				break;
 			case IDM_COPYTOCLIP:
+				image_to_clipboard();
 				break;
 			case IDCANCEL:
 				DestroyWindow(hwnd);

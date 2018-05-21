@@ -90,3 +90,177 @@ int file_save(HWND hwnd)
 		update_title(hwnd);
 	return result;
 }
+int copy_str_clipboard(char *str)
+{
+	int len,result=FALSE;
+	HGLOBAL hmem;
+	char *lock;
+	len=strlen(str);
+	if(len==0)
+		return result;
+	len++;
+	hmem=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,len);
+	if(hmem!=0){
+		lock=GlobalLock(hmem);
+		if(lock!=0){
+			memcpy(lock,str,len);
+			GlobalUnlock(hmem);
+			if(OpenClipboard(NULL)!=0){
+				EmptyClipboard();
+				SetClipboardData(CF_TEXT,hmem);
+				CloseClipboard();
+				result=TRUE;
+			}
+		}
+		if(!result)
+			GlobalFree(hmem);
+	}
+	return result;
+}
+int image_to_clipboard()
+{
+	int result=FALSE;
+	char *buf=0;
+	int buf_size=0;
+	if(get_image_txt(&buf,&buf_size)){
+		result=copy_str_clipboard(buf);
+		if(buf)
+			free(buf);
+	}
+	return result;
+}
+
+int fetch_next_char(unsigned char *str,int *index,int *val)
+{
+	int result=FALSE;
+	unsigned char a,b,c,d;
+	int offset=*index;
+	a=b=c=d=0;
+	a=str[offset];
+	if(0==a){
+		return result;
+	}else{
+		b=str[offset+1];
+		if(b!=0){
+			c=str[offset+2];
+			if(c!=0)
+				d=str[offset+3];
+		}
+	}
+	if(a&0x80){
+		if((a&0xE0)==0xC0){ //110xxxxx 2 bytes
+			if((b&0xC0)==0x80){ //10xxxxxx
+				*val=((a&0x1F)<<6)|(b&0x3F);
+				index[0]+=2;
+				result=TRUE;
+			}else{
+				goto FALLBACK;
+			}
+		}else if((a&0xF0)==0xE0){ //1110xxxx 3 bytes
+			if((b&0xC0)==0x80){ //10xxxxxx
+				if((c&0xC0)==0x80){
+					*val=((a&0xF)<<12)|((b&0x3F)<<6)|(c&0x3F);
+					index[0]+=3;
+					result=TRUE;
+				}else{
+					goto FALLBACK;
+				}
+			}else{
+				goto FALLBACK;
+			}
+		}else if((a&0xF8)==0xF0){ //11110xxx 4 bytes
+			if((b&0xC0)==0x80){ //10xxxxxx
+				if((c&0xC0)==0x80){
+					if((d&0xC0)==0x80){
+						*val=((a&0x7)<<18)|((b&0x3F)<<12)|((c&0x3F)<<6)|(d&0x3F);
+						index[0]+=4;
+						result=TRUE;
+					}else{
+						goto FALLBACK;
+					}
+				}else{
+					goto FALLBACK;
+				}
+			}else{
+				goto FALLBACK;
+			}
+		}else{
+			goto FALLBACK;
+		}
+	}else{
+FALLBACK:
+		*val=a;
+		index[0]++;
+		result=TRUE;
+	}
+	return result;
+}
+int get_str_dimensions(char *str,int *width,int *height)
+{
+	int max_width=0,line_count=0;
+	int counter=0;
+	int index=0;
+	int state=0;
+	int num_count;
+	int a;
+	while(fetch_next_char(str,&index,&a)){
+		if(0==a)
+			break;
+		if('\r'==a || '\n'==a){
+			if(counter>max_width)
+				max_width=counter;
+			counter=0;
+			if(a=='\n')
+				line_count++;
+		}else{
+			switch(state){
+			case 0:
+				if(3==a)
+					state=1;
+				else{
+					counter++;
+				}
+				num_count=0;
+				break;
+			case 1:
+				if(a>='0' && a<='9'){
+					num_count++;
+					if(num_count>=2)
+						state=2;
+				}else if(a==','){
+					state=3;
+					num_count=0;
+				}else{
+					counter++;
+					state=0;
+				}
+				break;
+			case 2: //check for ,
+				if(a==','){
+					state=3;
+					num_count=0;
+				}else{
+					state=0;
+					counter++;
+				}
+				break;
+			case 3: //number after ,
+				if(a>='0' && a<='9'){
+					num_count++;
+					if(num_count>=2)
+						state=0;
+				}else{
+					state=0;
+					counter++;
+				}
+				break;
+			}
+		}
+	}
+	*width=max_width;
+	*height=line_count;
+	return 1;
+}
+int import_txt(char *str)
+{
+}
