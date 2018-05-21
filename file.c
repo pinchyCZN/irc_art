@@ -63,6 +63,7 @@ int file_saveas(HWND hwnd)
 		wcsncpy(gfname,tmp,count);
 		gfname[count-1]=0;
 		write_image(gfname);
+		update_title(hwnd);
 		result=TRUE;
 	}
 	return result;

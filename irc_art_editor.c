@@ -33,10 +33,12 @@ WNDPROC old_image_proc=0;
 LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static void *state=0;
+#ifdef _DEBUG
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
 	}
+#endif
 	if(!state)
 		alloc_state(&state);
 	save_current_state(state);
@@ -143,6 +145,9 @@ LRESULT CALLBACK image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				}
 				break;
 			default:
+				if(ctrl){
+
+				}
 				break;
 			}
 			if(process){
@@ -254,13 +259,15 @@ int display_image_size(HWND hwnd)
 BOOL CALLBACK main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static HWND hgrip=0;
+#ifdef _DEBUG
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
 		print_msg(msg,wparam,lparam,hwnd);
+#endif
 	switch(msg){
 	case WM_INITDIALOG:
 		create_vga_font();
 		init_colors();
-		resize_grid(50,80);
+		resize_grid(80,40);
 		display_image_size(hwnd);
 		old_image_proc=SetWindowLong(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,(LONG)image_proc);
 		old_palette_proc=SetWindowLong(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,(LONG)palette_proc);
@@ -393,7 +400,9 @@ int WINAPI WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,in
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
+#ifdef _DEBUG
 	debug_console(hmaindlg);
+#endif
 
 	while (1){
 		int ret;
