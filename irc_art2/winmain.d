@@ -7,6 +7,7 @@ import core.stdc.ctype;
 import core.stdc.stdlib;
 import core.stdc.stdio;
 import resource;
+import image;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
@@ -397,7 +398,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						{
 							HWND htmp=di.hwndItem;
 							HDC hdc=di.hDC;
-							//paint_window(htmp,hdc);
+							paint_image(htmp,hdc);
 							return TRUE;
 						}
 						break;
