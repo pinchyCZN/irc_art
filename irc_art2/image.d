@@ -10,6 +10,7 @@ struct CELL{
 };
 
 struct IMAGE{
+nothrow:
 	CELL[] cells;
 	int width;
 	int height;
@@ -19,6 +20,11 @@ struct IMAGE{
 		CELL[] tmp;
 		int x,y;
 		tmp.length=w*h;
+		foreach(ref c;tmp){
+			c.val=0;
+			c.fg=0;
+			c.bg=0;
+		}
 		for(y=0;y<height;y++){
 			if(y>=h)
 				break;
@@ -35,13 +41,16 @@ struct IMAGE{
 				tmp[dst]=cells[src];
 			}
 		}
+		width=w;
+		height=h;
 		cells=tmp;
 	}
 					 
 };
 IMAGE[] images;
 int current_image=0;
-const char *vgargb=import("vga737.h");
+const char *vgargb=import("vga737.bin");
+
 
 
 int paint_image(HWND hwnd,HDC hdc)
@@ -104,4 +113,12 @@ int paint_image(HWND hwnd,HDC hdc)
 	return 0;
 
 	return result;
+}
+
+void init_image()
+{
+	IMAGE *img;
+	images.length=1;
+	img=&images[0];
+	img.resize_image(80,40);
 }

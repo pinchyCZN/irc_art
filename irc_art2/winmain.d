@@ -12,7 +12,7 @@ import image;
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
 
-nothrow:
+nothrow{
 void image_click(...){}
 void map_pixel_cell(...){}
 void set_fg(...){}
@@ -443,7 +443,7 @@ int debug_console(HWND hwnd)
 //	move_console(rect.right,0);
 	return 0;
 }
-
+}
 extern (Windows)
 int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_show)
 {
@@ -459,6 +459,8 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		MessageBox(NULL,"Unable to create window","ERROR",MB_OK|MB_SYSTEMMODAL);
 		return 0;
 	}
+	Runtime.initialize();
+	init_image();
 	ShowWindow(hmaindlg,SW_SHOW);
 	version(_DEBUG){
 	debug_console(hmaindlg);
