@@ -395,6 +395,7 @@ int paint_window(HWND hwnd,HDC hdc)
 		bmi.colors[0]=cell->bg;
 		bmi.colors[1]=cell->fg;
 		a=cell->val&0xFF;
+		a=44;
 		x=i%cols;
 		x*=8;
 		x+=xoffset;

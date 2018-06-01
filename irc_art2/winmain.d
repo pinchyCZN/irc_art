@@ -8,6 +8,7 @@ import core.stdc.stdlib;
 import core.stdc.stdio;
 import resource;
 import image;
+import anchor_system;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
@@ -32,14 +33,32 @@ int palette_click(...){return 1;};
 int get_cols(){return 1;};
 int get_rows(){return 1;};
 void resize_grid(...){};
-void create_vga_font(){};
-void init_colors(){};
-HWND create_grippy(...){return NULL;};
-void init_main_win_anchor(...){};
 void grippy_move(...){};
-void resize_main_win(...){};
 void file_save(...){};
 void file_saveas(...){};
+
+CONTROL_ANCHOR[] main_win_anchor=[
+	{IDC_COLORS,ANCHOR_LEFT|ANCHOR_TOP},
+	{IDC_IMAGE,ANCHOR_LEFT|ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
+	{IDC_EXT_COLORS,ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
+	{IDC_EXTC_SBAR,ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
+	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
+];
+
+int init_grippy(HWND hparent,int idc)
+{
+	int result=FALSE;
+	HWND hgrippy;
+	LONG style;
+	if(hparent==NULL)
+		return result;
+	hgrippy=GetDlgItem(hparent,idc);
+	if(hgrippy==NULL)
+		return result;
+	style=WS_CHILD|WS_VISIBLE|SBS_SIZEGRIP;
+	result=SetWindowLong(hgrippy,GWL_STYLE,style);
+	return result;
+}
 
 int process_mouse(int flags,int x,int y)
 {
@@ -245,7 +264,7 @@ int get_wnd_int(HWND hwnd)
 	return atoi(str.ptr);
 }
 int set_wind_int(HWND hwnd,int val)
-{
+{											
 	char[10] str=0;
 	_snprintf(str.ptr,str.length,"%i",val);
 	return SetWindowTextA(hwnd,str.ptr);
@@ -308,31 +327,27 @@ nothrow
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	static HWND hgrip=NULL;
 	version(_DEBUG){
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
 		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
 		case WM_INITDIALOG:
-			create_vga_font();
-			init_colors();
-			resize_grid(80,40);
+			anchor_init(hwnd,main_win_anchor);
+			init_grippy(hwnd,IDC_GRIPPY);
+			init_image();
 			display_image_size(hwnd);
 			old_image_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,cast(LONG_PTR)&image_proc);
 			old_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,cast(LONG_PTR)&palette_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
 			SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
-			hgrip=create_grippy(hwnd);
-			init_main_win_anchor(hwnd);
 			SendMessage(GetDlgItem(hwnd,IDC_ROWS),EM_LIMITTEXT,4,0);
 			SendMessage(GetDlgItem(hwnd,IDC_COLS),EM_LIMITTEXT,4,0);
 			break;
 		case WM_SIZE:
 			{
-				grippy_move(hwnd,hgrip);
-				resize_main_win(hwnd);
+				anchor_resize(hwnd,main_win_anchor);
 			}
 			break;
 		case WM_APP:
@@ -443,12 +458,13 @@ int debug_console(HWND hwnd)
 //	move_console(rect.right,0);
 	return 0;
 }
-}
+} //nothrow
 extern (Windows)
 int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_show)
 {
 	INITCOMMONCONTROLSEX ctrls;
 
+	Runtime.initialize();
 	ghinstance=hinstance;
 	ctrls.dwSize=ctrls.sizeof;
 	ctrls.dwICC=ICC_LISTVIEW_CLASSES|ICC_TREEVIEW_CLASSES|ICC_BAR_CLASSES|ICC_TAB_CLASSES|ICC_PROGRESS_CLASS|ICC_HOTKEY_CLASS;
@@ -459,8 +475,6 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		MessageBox(NULL,"Unable to create window","ERROR",MB_OK|MB_SYSTEMMODAL);
 		return 0;
 	}
-	Runtime.initialize();
-	init_image();
 	ShowWindow(hmaindlg,SW_SHOW);
 	version(_DEBUG){
 	debug_console(hmaindlg);

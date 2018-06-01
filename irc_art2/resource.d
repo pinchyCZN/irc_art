@@ -1,7 +1,7 @@
 /* Converted to D from ..\resource.h by htod */
 module resource;
 //{{NO_DEPENDENCIES}}
-// Microsoft Developer Studio generated include file.
+// Microsoft Visual C++ generated include file.
 // Used by resource.rc
 //
 //C     #define IDD_MAINDLG                     101
@@ -39,8 +39,12 @@ const IDC_EXTC_SBAR = 1008;
 const IDC_TXT_APPDATA = 1009;
 //C     #define IDC_FILE                        1010
 const IDC_NO_INI = 1010;
-//C     #define IDM_SAVE                        40001
+//C     #define IDC_SCROLLBAR1                  1011
 const IDC_FILE = 1010;
+//C     #define IDC_GRIPPY                      1011
+const IDC_SCROLLBAR1 = 1011;
+//C     #define IDM_SAVE                        40001
+const IDC_GRIPPY = 1011;
 //C     #define IDM_COPYTOCLIP                  40002
 const IDM_SAVE = 40001;
 //C     #define IDM_FILEOPEN                    40004
@@ -55,7 +59,7 @@ const IDM_SAVEAS = 40005;
 //C     #ifndef APSTUDIO_READONLY_SYMBOLS
 //C     #define _APS_NEXT_RESOURCE_VALUE        103
 //C     #define _APS_NEXT_COMMAND_VALUE         40006
-//C     #define _APS_NEXT_CONTROL_VALUE         1011
+//C     #define _APS_NEXT_CONTROL_VALUE         1012
 //C     #define _APS_NEXT_SYMED_VALUE           101
 //C     #endif
 //C     #endif
