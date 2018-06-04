@@ -3,7 +3,6 @@ module debug_print;
 import core.sys.windows.windows;
 import core.stdc.stdio;
 import core.stdc.ctype;
-import std.stdio;
 nothrow:
 
 struct NAME{
@@ -569,7 +568,7 @@ void open_console()
 		if(hcrt!=0){
 			import std.stdio;
 			fdopen(hcrt,"w");
-			setvbuf(0,_IONBF);
+			setvbuf(null,_IONBF);
 			consolecreated=TRUE;
 		}
 	}
