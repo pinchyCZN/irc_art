@@ -2,17 +2,21 @@ module file_image;
 
 import core.sys.windows.windows;
 import core.stdc.stdio;
+import core.stdc.stdlib;
+import core.stdc.string;
 import std.string;
 import std.utf;
+import std.stdio;
 import image;
 nothrow:
 
-void update_title(HWND hwnd,wstring title,int mod)
+void update_title(HWND hwnd,string title,int mod)
 {
-	wstring tmp;
+	string tmp=title;
 	if(mod)
-		tmp=title~"*"w;
-	SetWindowTextW(hwnd,toUTF16z(tmp));
+		tmp=tmp~"*";
+	tmp~="\0";
+	SetWindowTextA(hwnd,tmp.ptr);
 }
 int write_image(string fname,string text)
 {
@@ -38,33 +42,37 @@ int init_ofn(OPENFILENAMEW *ofn,const WCHAR *title,HWND hwnd)
 	return TRUE;
 }
 
-int file_saveas(HWND hwnd,IMAGE img)
+int file_saveas(HWND hwnd,IMAGE *img)
 {
 	int result=FALSE;
 	OPENFILENAMEW ofn;
 	WCHAR[1024] tmp;
+	if(img is null)
+		return result;
 	init_ofn(&ofn,"Save"w.ptr,hwnd);
 	ofn.lpstrFile=tmp.ptr;
 	ofn.nMaxFile=tmp.length;
 	if(GetOpenFileNameW(&ofn)){
-		write_image(gfname);
-		update_title(hwnd);
+		write_image(img.fname,img.get_text());
+		update_title(hwnd,img.fname,img.is_modified);
 		result=TRUE;
 	}
 	return result;
 }
-int file_save(HWND hwnd)
+int file_save(HWND hwnd,IMAGE *img)
 {
 	int result=FALSE;
-	if(gfname[0]!=0)
-		result=write_image(gfname);
+	if(img is null)
+		return result;
+	if(0==img.fname.length)
+		result=file_saveas(hwnd,img);
 	else
-		result=file_saveas(hwnd);
+		result=write_image(img.fname,img.get_text());
 	if(result)
-		update_title(hwnd);
+		update_title(hwnd,img.fname,img.is_modified);
 	return result;
 }
-int copy_str_clipboard(char *str)
+int copy_str_clipboard(const char *str)
 {
 	int len,result=FALSE;
 	HGLOBAL hmem;
@@ -73,10 +81,10 @@ int copy_str_clipboard(char *str)
 	if(len==0)
 		return result;
 	len++;
-	hmem=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,len);
-	if(hmem!=0){
-		lock=GlobalLock(hmem);
-		if(lock!=0){
+	hmem=GlobalAlloc(GMEM_MOVEABLE,len);
+	if(hmem !is null){
+		lock=cast(char*)GlobalLock(hmem);
+		if(lock !is null){
 			memcpy(lock,str,len);
 			GlobalUnlock(hmem);
 			if(OpenClipboard(NULL)!=0){
@@ -91,16 +99,15 @@ int copy_str_clipboard(char *str)
 	}
 	return result;
 }
-int image_to_clipboard()
+int image_to_clipboard(IMAGE *img)
 {
 	int result=FALSE;
-	char *buf=0;
-	int buf_size=0;
-	if(get_image_txt(&buf,&buf_size)){
-		result=copy_str_clipboard(buf);
-		if(buf)
-			free(buf);
-	}
+	string tmp;
+	if(img is null)
+		return result;
+	tmp=img.get_text();
+	tmp~='\0';
+	result=copy_str_clipboard(tmp.ptr);
 	return result;
 }
 
@@ -169,7 +176,7 @@ int fetch_next_char(ubyte *str,int *index,int *val)
 	}
 	return result;
 }
-int get_str_dimensions(ref ubyte[] str,int *width,int *height)
+int get_str_dimensions(ubyte *str,int *width,int *height)
 {
 	int max_width=0,line_count=0;
 	int counter=0;
@@ -229,6 +236,8 @@ int get_str_dimensions(ref ubyte[] str,int *width,int *height)
 						counter++;
 					}
 					break;
+				default:
+					break;
 			}
 		}
 	}
@@ -244,7 +253,7 @@ int get_str_dimensions(ref ubyte[] str,int *width,int *height)
 	*height=line_count;
 	return 1;
 }
-int process_str(char *str)
+int process_str(ubyte *str,ref IMAGE img)
 {
 	int index=0;
 	int state=0;
@@ -252,8 +261,8 @@ int process_str(char *str)
 	int x=0,y=0;
 	int max_x,max_y;
 	int a;
-	max_x=get_cols();
-	max_y=get_rows();
+	get_str_dimensions(str,&max_x,&max_y);
+	img.resize_image(max_x,max_y);
 	fg=1;
 	bg=0;
 	while(fetch_next_char(str,&index,&a)){
@@ -275,9 +284,9 @@ int process_str(char *str)
 						state=1;
 					else{
 						if(!(a==2 || a==0x1D || a==0x1F || a==0x16 || a==0xF)){
-							set_fg(get_color_val(fg),x,y);
-							set_bg(get_color_val(bg),x,y);
-							set_char(a,x,y);
+							img.set_fg(fg,x,y);
+							img.set_bg(bg,x,y);
+							img.set_char(a,x,y);
 							x++;
 						}
 					}
@@ -328,77 +337,76 @@ int process_str(char *str)
 						goto WRITE_CELL;
 					}
 					break;
+				default:
+					break;
 			}
 		}
 	}
 	return 1;
 
 }
-int import_txt(char *str)
+int import_txt(char *str,ref IMAGE img)
 {
 	int result=FALSE;
 	int width=0,height=0;
-	get_str_dimensions(str,&width,&height);
+	get_str_dimensions(cast(ubyte*)str,&width,&height);
 	if(width<=0 || height<=0){
 		return result;
 	}
-	if(width>500)
+	if(width>1000)
 		width=500;
 	if(height>1000)
 		height=1000;
-	if(resize_grid(width,height))
-		result=process_str(str);
+	result=process_str(cast(ubyte*)str,img);
 	return result;
 }
-int file_open(HWND hwnd)
+int file_open(HWND hwnd,ref IMAGE img)
 {
 	int result=FALSE;
-	OPENFILENAMEW ofn={0};
-	WCHAR[MAX_PATH] tmp={0};
+	OPENFILENAMEW ofn;
+	WCHAR[MAX_PATH] tmp;
 	init_ofn(&ofn,"Open",hwnd);
-	ofn.lpstrFile=tmp;
-	ofn.nMaxFile=sizeof(tmp)/sizeof(WCHAR);
+	ofn.lpstrFile=tmp.ptr;
+	ofn.nMaxFile=tmp.length;
 	if(GetOpenFileNameW(&ofn)){
 		FILE *f;
-		f=_wfopen(tmp,"rb");
+		f=_wfopen(tmp.ptr,"rb");
 		if(f){
 			char *str;
 			int str_size=0x100000;
-			str=calloc(str_size,1);
+			str=cast(char*)calloc(str_size,1);
 			if(str)
 				fread(str,1,str_size,f);
 			fclose(f);
 			if(str){
 				str[str_size-1]=0;
-				result=process_str(str);
+				result=process_str(cast(ubyte*)str,img);
 				free(str);
 			}
 		}
 	}
-	if(result)
-		PostMessage(hwnd,WM_APP,1,0);
 	return result;
 }
 
-int import_clipboard(HWND hwnd)
+int import_clipboard(HWND hwnd,ref IMAGE img)
 {
 	int result=FALSE;
 	if(OpenClipboard(NULL)){
 		HANDLE htxt=GetClipboardData(CF_TEXT);
 		if(htxt){
-			char *str=GlobalLock(htxt);
+			char *str=cast(char*)GlobalLock(htxt);
 			if(str){
 				char *tmp=strdup(str);
 				GlobalUnlock(htxt);
 				if(tmp){
-					result=import_txt(tmp);
+					result=import_txt(tmp,img);
+					if(result)
+						img.is_modified=true;
 					free(tmp);
 				}
 			}
 		}
 		CloseClipboard();
 	}
-	if(result)
-		PostMessage(hwnd,WM_APP,1,0);
 	return result;
 }

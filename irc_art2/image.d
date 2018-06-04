@@ -15,9 +15,59 @@ nothrow:
 	CELL[] cells;
 	int width;
 	int height;
+	int cell_width=8,cell_height=12;
+	int is_modified;
 	POINT cursor;
 	RECT selection;
 	string fname;
+	int is_valid_pos(int x,int y){
+		if(x>=width || x<0)
+			return false;;
+		if(y>=height || y<0)
+			return false;
+		int index=x+y*width;
+		if(index>=cells.length)
+			return false;
+		return true;
+	}
+	void set_char(int val,int x,int y){
+		if(!is_valid_pos(x,y))
+			return;
+		int index=x+y*width;
+		cells[index].val=cast(WCHAR)val;
+		is_modified=true;
+	}
+	void set_fg(int val,int x,int y){
+		if(!is_valid_pos(x,y))
+			return;
+		int index=x+y*width;
+		cells[index].fg=val;
+		is_modified=true;
+	}
+	void set_bg(int val,int x,int y){
+		if(!is_valid_pos(x,y))
+			return;
+		int index=x+y*width;
+		cells[index].bg=val;
+		is_modified=true;
+	}
+	void move_cursor(int x,int y){
+		cursor.x+=x;
+		cursor.y+=y;
+		if(cursor.x<0)
+			cursor.x=width-1;
+		if(cursor.y<0)
+			cursor.y=height-1;
+		if(cursor.x>=width)
+			cursor.x=0;
+		if(cursor.y>=height)
+			cursor.y=0;
+		if(cursor.x<0)
+			cursor.x=0;
+		if(cursor.y<0)
+			cursor.y=0;
+		is_modified=true;
+	}
 	void resize_image(int w,int h){
 		CELL[] tmp;
 		int x,y;
@@ -46,6 +96,7 @@ nothrow:
 		width=w;
 		height=h;
 		cells=tmp;
+		is_modified=true;
 	}
 	int selection_width()
 	{
@@ -120,18 +171,27 @@ nothrow:
 						emit_color_str(result,c.bg,full);
 					}
 				}
+				WCHAR a=c.val;
+				if(a<' ')
+					a=' ';
+				result~=a;
 				tmp=*c;
 			}
 			result~='\n';
 		}
 		return result;
 	}
-
 };
 IMAGE[] images;
 int current_image=0;
 ubyte *vgargb;
 
+IMAGE *get_current_image()
+{
+	if(current_image<0 || current_image>=images.length)
+		return null;
+	return &images[current_image];
+}
 void create_vga_font()
 {
 	import vga737;
@@ -165,6 +225,24 @@ void create_vga_font()
 		}
 	}
 }
+int image_click(IMAGE *img,int x,int y,int flags)
+{
+	int result=false;
+	if(img is null)
+		return result;
+	if(0==img.cell_width || 0==img.cell_height)
+		return result;
+	x=x/img.cell_width;
+	y=y/img.cell_height;
+	if(x>=img.width || y>=img.height)
+		return result;
+	if((img.cursor.x != x) || (img.cursor.y != y))
+		img.is_modified=true;
+	img.cursor.x=x;
+	img.cursor.y=y;
+	result=true;
+	return result;
+}
 
 int paint_image(HWND hwnd,HDC hdc)
 {
@@ -180,19 +258,19 @@ int paint_image(HWND hwnd,HDC hdc)
 	const ubyte *font=vgargb;
 	IMAGE *img;
 
-	if(current_image<0 || current_image>=images.length)
-		return result;
 	if(font is null)
 		return result;
-	img=&images[current_image];
+	img=get_current_image();
+	if(img is null)
+		return result;
 
 	bmi.bmiHeader.biBitCount=8;
-	bmi.bmiHeader.biWidth=8;
-	bmi.bmiHeader.biHeight=12;
+	bmi.bmiHeader.biWidth=img.cell_width;
+	bmi.bmiHeader.biHeight=img.cell_height;
 	bmi.bmiHeader.biPlanes=1;
-	bmi.bmiHeader.biSizeImage=8*12;
-	bmi.bmiHeader.biXPelsPerMeter=12;
-	bmi.bmiHeader.biYPelsPerMeter=12;
+	bmi.bmiHeader.biSizeImage=img.cell_width*img.cell_height;
+	bmi.bmiHeader.biXPelsPerMeter=0;
+	bmi.bmiHeader.biYPelsPerMeter=0;
 	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
 	xoffset=0;
 	yoffset=0;
@@ -205,32 +283,32 @@ int paint_image(HWND hwnd,HDC hdc)
 		bmi.colors[1]=get_rgb_color(cell.fg);
 		a=cell.val&0xFF;
 		x=i%img.width;
-		x*=8;
+		x*=img.cell_width;
 		x+=xoffset;
 		y=i/img.width;
-		y*=12;
+		y*=img.cell_height;
 		y+=yoffset;
-		SetDIBitsToDevice(hdc,x,y,8,12,
+		SetDIBitsToDevice(hdc,x,y,img.cell_width,img.cell_height,
 						  0,0, //src xy
-						  0,12, //startscan,scanlines
-						  font+a*12*8,
+						  0,img.cell_height, //startscan,scanlines
+						  font+a*img.cell_width*img.cell_height,
 						  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
 	}
 	RECT rect;
-	rect.left=img.cursor.x*8;
+	rect.left=img.cursor.x*img.cell_width;
 	rect.left+=xoffset;
-	rect.top=img.cursor.y*12;
+	rect.top=img.cursor.y*img.cell_height;
 	rect.top+=yoffset;
-	rect.right=rect.left+8;
-	rect.bottom=rect.top+12;
+	rect.right=rect.left+img.cell_width;
+	rect.bottom=rect.top+img.cell_height;
 	DrawFocusRect(hdc,&rect);
 
 	if(img.selection_width>0 || img.selection_height>0){
 		rect=img.selection;
-		rect.left*=8;
-		rect.right*=8;
-		rect.top*=12;
-		rect.bottom*=12;
+		rect.left*=img.cell_width;
+		rect.right*=img.cell_width;
+		rect.top*=img.cell_height;
+		rect.bottom*=img.cell_height;
 		DrawFocusRect(hdc,&rect);
 	}
 	return 0;

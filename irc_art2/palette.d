@@ -1,4 +1,5 @@
 module palette;
+
 nothrow:
 
 int[] color_lookup=[
@@ -111,4 +112,140 @@ int get_rgb_color(int pal_index)
 		return result;
 	result=color_lookup[pal_index];
 	return result;
+}
+
+int get_cindex(int x,int y,int w,int h)
+{
+	int index,size;
+	index=(x/(w/8));
+	if(y<(h/2)){
+		if(index>=8)
+			index=7;
+	}else{
+		index+=8;
+	}
+	size=color_lookup.length;
+	if(index>=size)
+		index=size-1;
+	return index;
+}
+
+import core.sys.windows.windows;
+import core.stdc.string;
+import core.stdc.stdlib;
+import resource;
+
+static int palette_w,palette_h;
+static int *palette;
+
+int paint_colors(HWND hwnd,HDC hdc)
+{
+	BITMAPINFO bmi;
+	int w,h,pw,ph;
+	int init=FALSE;
+	RECT rect;
+
+	GetWindowRect(hwnd,&rect);
+	w=rect.right-rect.left;
+	h=rect.bottom-rect.top;
+	if(palette_w!=w || palette_h!=h){
+		int size=w*h*4;
+		int *tmp=cast(int*)realloc(palette,size);
+		if(tmp){
+			palette=tmp;
+			init=TRUE;
+			palette_w=w;
+			palette_h=h;
+			memset(palette,0,size);
+		}
+	}
+	if(!palette)
+		return 0;
+	if(palette_w<=0 || palette_h<=0)
+		return 0;
+	pw=palette_w;
+	ph=palette_h;
+	if(init){
+		int x,y;
+		for(x=0;x<pw;x++){
+			for(y=0;y<ph;y++){
+				int c,index;
+				index=get_cindex(x,y,pw,ph);
+				if(index>=color_lookup.length)
+					index=0;
+				c=color_lookup[index];
+				{
+					int offset;
+					offset=x+(ph-y-1)*pw; //flip
+					if(offset<(pw*ph))
+						palette[offset]=c;
+				}
+			}
+		}
+	}
+	memset(&bmi,0,bmi.sizeof);
+	bmi.bmiHeader.biBitCount=32;
+	bmi.bmiHeader.biWidth=pw;
+	bmi.bmiHeader.biHeight=ph;
+	bmi.bmiHeader.biPlanes=1;
+	bmi.bmiHeader.biSizeImage=pw*ph;
+	bmi.bmiHeader.biXPelsPerMeter=12;
+	bmi.bmiHeader.biYPelsPerMeter=12;
+	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
+	SetDIBitsToDevice(hdc,0,0,pw,ph,
+					  0,0, //src xy
+					  0,ph, //startscan,scanlines
+					  palette,
+					  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
+
+	return 0;
+}
+
+
+void paint_current_colors(HWND hwnd,HDC hdc,int id,int fg,int bg)
+{
+	BITMAPINFO bmi;
+	int c;
+	RECT rect;
+	int w,h;
+	if(IDC_FG==id)
+		c=fg;
+	else
+		c=bg;
+	if(c<0 || c>=color_lookup.length)
+		return;
+	c=color_lookup[c];
+	GetWindowRect(hwnd,&rect);
+	w=rect.right-rect.left;
+	h=rect.bottom-rect.top;
+	memset(&bmi,0,bmi.sizeof);
+	bmi.bmiHeader.biBitCount=32;
+	bmi.bmiHeader.biWidth=1;
+	bmi.bmiHeader.biHeight=1;
+	bmi.bmiHeader.biPlanes=1;
+	bmi.bmiHeader.biSizeImage=1;
+	bmi.bmiHeader.biXPelsPerMeter=12;
+	bmi.bmiHeader.biYPelsPerMeter=12;
+	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
+	StretchDIBits(hdc,0,0,w,h,
+				  0,0,1,1,
+				  &c,
+				  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS,SRCCOPY);
+	return;
+}
+
+void palette_click(int x, int y,UINT msg,int *fg,int *bg)
+{
+	int index;
+	index=get_cindex(x,y,palette_w,palette_h);
+	switch(msg){
+		case WM_LBUTTONDOWN:
+			*fg=index;
+			break;
+		case WM_RBUTTONDOWN:
+			*bg=index;
+			break;
+		default:
+			break;
+	}
 }

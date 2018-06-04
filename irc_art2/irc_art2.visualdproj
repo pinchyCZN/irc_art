@@ -430,6 +430,7 @@
  </Config>
  <Folder name="irc_art2">
   <File path="anchor_system.d" />
+  <File path="debug_print.d" />
   <File path="file_image.d" />
   <File path="image.d" />
   <File path="palette.d" />

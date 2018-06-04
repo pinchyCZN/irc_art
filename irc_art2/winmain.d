@@ -8,34 +8,15 @@ import core.stdc.stdlib;
 import core.stdc.stdio;
 import resource;
 import image;
+import palette;
 import anchor_system;
+import file_image;
+import debug_print;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
 
 nothrow{
-void image_click(...){}
-void map_pixel_cell(...){}
-void set_fg(...){}
-void alloc_state(...){}
-void save_current_state(...){}
-int get_color_fg(){return 1;}
-void set_bg(...){}
-int get_color_bg(...){return 1;}
-int get_cursor_x(){return 1;};
-int get_cursor_y(){return 1;}
-void set_char(...){};
-void move_cursor(...){};
-void image_to_clipboard(...){};
-void import_clipboard(...){};
-int state_changed(...){return 1;};
-int palette_click(...){return 1;};
-int get_cols(){return 1;};
-int get_rows(){return 1;};
-void resize_grid(...){};
-void grippy_move(...){};
-void file_save(...){};
-void file_saveas(...){};
 
 CONTROL_ANCHOR[] main_win_anchor=[
 	{IDC_COLORS,ANCHOR_LEFT|ANCHOR_TOP},
@@ -44,6 +25,8 @@ CONTROL_ANCHOR[] main_win_anchor=[
 	{IDC_EXTC_SBAR,ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
 	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
 ];
+int fg_color=0;
+int bg_color=1;
 
 int init_grippy(HWND hparent,int idc)
 {
@@ -64,29 +47,32 @@ int process_mouse(int flags,int x,int y)
 {
 	if(flags&MK_CONTROL){
 		if(flags&MK_LBUTTON){
-			image_click(x,y,0);
-			map_pixel_cell(&x,&y);
-			set_fg(get_color_fg(),x,y);
+			IMAGE *img=get_current_image();
+			if(image_click(img,x,y,0)){
+				img.set_fg(fg_color,img.cursor.x,img.cursor.y);
+			}
 		}else if(flags&MK_RBUTTON){
-			image_click(x,y,0);
-			map_pixel_cell(&x,&y);
-			set_bg(get_color_bg(),x,y);
+			IMAGE *img=get_current_image();
+			if(image_click(img,x,y,0)){
+				img.set_bg(bg_color,img.cursor.x,img.cursor.y);
+			}
 		}
 	}else if(flags&MK_SHIFT){
 	}
 	else{
 		if(flags&MK_LBUTTON){
-			image_click(x,y,MK_LBUTTON);
+			IMAGE *img=get_current_image();
+			image_click(img,x,y,MK_LBUTTON);
 		}
 	}
 	return 0;
 }
+
 WNDPROC old_image_proc=NULL;
 nothrow
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	static void *state=null;
 	version(_DEBUG) {
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
@@ -94,9 +80,6 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	}
 	}
 	
-	if(!state)
-		alloc_state(&state);
-	save_current_state(state);
 	switch(msg){
 		case WM_GETDLGCODE:
 			return DLGC_WANTARROWS|DLGC_WANTCHARS|DLGC_WANTMESSAGE|DLGC_WANTALLKEYS;
@@ -125,6 +108,9 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				int code=wparam;
 				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
 				int shift=GetKeyState(VK_SHIFT)&0x8000;
+				IMAGE *img=get_current_image();
+				if(img is null)
+					break;
 				if(code>=' ' && code<=0x7F){
 					if(ctrl){
 						break;
@@ -136,25 +122,27 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						else
 							code=toupper(code);
 					}
-					x=get_cursor_x();
-					y=get_cursor_y();
-					set_char(code,x,y);
-					set_fg(get_color_fg(),x,y);
-					move_cursor(1,0);
+					x=img.cursor.x;
+					y=img.cursor.y;
+					img.set_char(code,x,y);
+					img.set_fg(fg_color,x,y);
+					img.move_cursor(1,0);
 				}else if('\r'==code){
-					move_cursor(0,1);
+					img.move_cursor(0,1);
 				}else if('\b'==code){
-					move_cursor(-1,0);
-					x=get_cursor_x();
-					y=get_cursor_y();
-					set_char(' ',x,y);
+					img.move_cursor(-1,0);
+					x=img.cursor.x;
+					y=img.cursor.y;
+					img.set_char(' ',x,y);
 				}else{
 					if(ctrl){
 						if(!shift){
 							if(3==code)
-								image_to_clipboard();
+								image_to_clipboard(img);
 							else if(0x16==code){
-								import_clipboard(hmaindlg);
+								import_clipboard(hmaindlg,*img);
+								img.is_modified=false;
+								PostMessage(hmaindlg,WM_APP,1,0);
 							}
 						}
 						break;
@@ -169,23 +157,26 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				int shift=GetKeyState(VK_SHIFT)&0x8000;
 				int process=FALSE;
 				int ox,oy;
-				ox=get_cursor_x();
-				oy=get_cursor_y();
+				IMAGE *img=get_current_image();
+				if(img is null)
+					break;
+				ox=img.cursor.x;
+				oy=img.cursor.y;
 				switch(vkey){
 					case VK_LEFT:
-						move_cursor(-1,0);
+						img.move_cursor(-1,0);
 						process=TRUE;
 						break;
 					case VK_RIGHT:
-						move_cursor(1,0);
+						img.move_cursor(1,0);
 						process=TRUE;
 						break;
 					case VK_UP:
-						move_cursor(0,-1);
+						img.move_cursor(0,-1);
 						process=TRUE;
 						break;
 					case VK_DOWN:
-						move_cursor(0,1);
+						img.move_cursor(0,1);
 						process=TRUE;
 						break;
 					case VK_ESCAPE:
@@ -194,9 +185,9 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					case VK_DELETE:
 						{
 							int x,y;
-							x=get_cursor_x();
-							y=get_cursor_y();
-							set_char(' ',x,y);
+							x=img.cursor.x;
+							x=img.cursor.y;
+							img.set_char(' ',x,y);
 						}
 						break;
 					default:
@@ -207,14 +198,14 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				}
 				if(process){
 					int x,y;
-					x=get_cursor_x();
-					y=get_cursor_y();
+					x=img.cursor.x;
+					y=img.cursor.y;
 					if(ctrl){
-						set_bg(get_color_bg(),ox,oy);
-						set_bg(get_color_bg(),x,y);
+						img.set_bg(bg_color,ox,oy);
+						img.set_bg(bg_color,x,y);
 					}else if(shift){
-						set_fg(get_color_fg(),ox,oy);
-						set_fg(get_color_fg(),x,y);
+						img.set_fg(fg_color,ox,oy);
+						img.set_fg(fg_color,x,y);
 					}
 				}
 			}
@@ -222,8 +213,13 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		default:
 			break;
 	}
-	if(state_changed(state))
-		InvalidateRect(hwnd,NULL,FALSE);
+	IMAGE *img=get_current_image();
+	if(img !is null){
+		if(img.is_modified){
+			InvalidateRect(hwnd,NULL,FALSE);
+			img.is_modified=false;
+		}
+	}
 
 	return CallWindowProc(old_image_proc,hwnd,msg,wparam,lparam);
 }
@@ -242,7 +238,7 @@ BOOL palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				HWND htmp;
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
-				palette_click(x,y,msg);
+				palette_click(x,y,msg,&fg_color,&bg_color);
 				htmp=GetDlgItem(hmaindlg,IDC_FG);
 				if(htmp)
 					InvalidateRect(htmp,NULL,FALSE);
@@ -293,14 +289,17 @@ BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					else if(x>500)
 						x=500;
 					id=GetDlgCtrlID(hwnd);
+					IMAGE *img=get_current_image();
+					if(img is null)
+						break;
 					if(IDC_ROWS==id){
-						w=get_cols();
+						w=img.width;
 						h=x;
 					}else{
 						w=x;
-						h=get_rows();
+						h=img.height;
 					}
-					resize_grid(w,h);
+					img.resize_image(w,h);
 					set_wind_int(hwnd,x);
 					InvalidateRect(GetDlgItem(hmaindlg,IDC_IMAGE),NULL,TRUE);
 				}
@@ -311,17 +310,19 @@ BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	}
 	return CallWindowProc(old_edit_proc,hwnd,msg,wparam,lparam);
 }
-int display_image_size(HWND hwnd)
+void display_image_size(HWND hwnd)
 {
 	char[40] tmp=0;
 	int w,h;
-	w=get_cols();
-	h=get_rows();
+	IMAGE *img=get_current_image();
+	if(img is null)
+		return;
+	w=img.width;
+	h=img.height;
 	_snprintf(tmp.ptr,tmp.length,"%i",w);
 	SetDlgItemTextA(hwnd,IDC_COLS,tmp.ptr);
 	_snprintf(tmp.ptr,tmp.length,"%i",h);
 	SetDlgItemTextA(hwnd,IDC_ROWS,tmp.ptr);
-	return 0;
 }
 nothrow
 extern(Windows)
@@ -370,16 +371,24 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				int idc=LOWORD(wparam);
 				switch(idc){
 					case IDM_SAVE:
-						file_save(hwnd);
+						file_save(hwnd,get_current_image());
 						break;
 					case IDM_SAVEAS:
-						file_saveas(hwnd);
+						file_saveas(hwnd,get_current_image());
 						break;
 					case IDM_FILEOPEN:
-						//file_open(hwnd);
+						{
+							IMAGE img;
+							file_open(hwnd,img);
+						}
 						break;
 					case IDM_COPYTOCLIP:
-						image_to_clipboard();
+						{
+							IMAGE *img=get_current_image();
+							if(img is null)
+								break;
+							image_to_clipboard(img);
+						}
 						break;
 					case IDCANCEL:
 						DestroyWindow(hwnd);
@@ -421,7 +430,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						{
 							HWND htmp=di.hwndItem;
 							HDC hdc=di.hDC;
-							//paint_colors(htmp,hdc);
+							paint_colors(htmp,hdc);
 							return TRUE;
 						}
 						break;
@@ -430,7 +439,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						{
 							HWND htmp=di.hwndItem;
 							HDC hdc=di.hDC;
-							//paint_current_colors(htmp,hdc,di.CtlID);
+							paint_current_colors(htmp,hdc,di.CtlID,fg_color,bg_color);
 						}
 						break;
 					default:
@@ -453,7 +462,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 int debug_console(HWND hwnd)
 {
 	RECT rect;
-//	open_console();
+	open_console();
 	GetWindowRect(hwnd,&rect);
 //	move_console(rect.right,0);
 	return 0;
@@ -476,7 +485,8 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(_DEBUG){
+	//version(_DEBUG)
+	{
 	debug_console(hmaindlg);
 	}
 
