@@ -491,7 +491,7 @@ int get_key_str(uint key,char *str)
 		sprintf(str,"%s",virtual_keys[key].ptr);
 	return TRUE;
 }
-void print_msg(int msg,int wparam,int lparam,int hwnd)
+void print_msg(int msg,int wparam,int lparam,HANDLE hwnd)
 {
 	int i;
 	DWORD time;
@@ -553,10 +553,11 @@ int print_lasterror()
 	return 0;
 }
 
-extern (C) int _open_osfhandle(long,int);
 
+extern (C) int _open_osfhandle(long,int);
 void open_console()
 {
+	import std.stdio;
 	static int consoleallocated=FALSE;
 	static int consolecreated=FALSE;
 	if(!consoleallocated){
@@ -566,9 +567,10 @@ void open_console()
 		int hcrt;
 		hcrt=_open_osfhandle(cast(long)GetStdHandle(STD_OUTPUT_HANDLE),_O_TEXT);
 		if(hcrt!=0){
-			import std.stdio;
-			fdopen(hcrt,"w");
-			setvbuf(null,_IONBF);
+			FILE *f=core.stdc.stdio.stdout;
+			f._file=hcrt;
+			f._flag=_IOWRT|_IONBF;
+			fflush(f);
 			consolecreated=TRUE;
 		}
 	}

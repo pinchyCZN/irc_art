@@ -596,14 +596,16 @@ int open_console()
 		}
 		return result;
 	}
-	AllocConsole(); 
+	AllocConsole();
 	hcrt=_open_osfhandle((long)GetStdHandle(STD_OUTPUT_HANDLE),_O_TEXT);
-	result=TRUE;
-
-	fflush(stdin);
-	hf=_fdopen(hcrt,"w"); 
-	*stdout=*hf; 
-	setvbuf(stdout,NULL,_IONBF,0);
+	if(hcrt){
+		FILE *f=stdout;
+		memset(f,0,sizeof(FILE));
+		f->_flag=_IOWRT|_IONBF;
+		f->_file=hcrt;
+		setvbuf(stdout,NULL,_IONBF,0);
+		result=TRUE;
+	}
 	if(GetConsoleWindow){
 		HWND hcon=GetConsoleWindow();
 		if(hcon){

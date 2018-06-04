@@ -22,7 +22,7 @@ nothrow:
 	string fname;
 	int is_valid_pos(int x,int y){
 		if(x>=width || x<0)
-			return false;;
+			return false;
 		if(y>=height || y<0)
 			return false;
 		int index=x+y*width;

@@ -459,15 +459,17 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	return 0;
 }
 
+} //nothrow
+
 int debug_console(HWND hwnd)
 {
 	RECT rect;
 	open_console();
 	GetWindowRect(hwnd,&rect);
-//	move_console(rect.right,0);
+	move_console(rect.right,0);
 	return 0;
 }
-} //nothrow
+
 extern (Windows)
 int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_show)
 {
@@ -485,9 +487,9 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	//version(_DEBUG)
+	version(_DEBUG)
 	{
-	debug_console(hmaindlg);
+		debug_console(hmaindlg);
 	}
 
 	while (1){
