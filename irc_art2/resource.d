@@ -39,12 +39,16 @@ const IDC_EXTC_SBAR = 1008;
 const IDC_TXT_APPDATA = 1009;
 //C     #define IDC_FILE                        1010
 const IDC_NO_INI = 1010;
-//C     #define IDC_SCROLLBAR1                  1011
-const IDC_FILE = 1010;
 //C     #define IDC_GRIPPY                      1011
-const IDC_SCROLLBAR1 = 1011;
-//C     #define IDM_SAVE                        40001
+const IDC_FILE = 1010;
+//C     #define IDC_CHECK1                      1012
 const IDC_GRIPPY = 1011;
+//C     #define IDC_FG_CHK                      1012
+const IDC_CHECK1 = 1012;
+//C     #define IDC_BG_CHK                      1013
+const IDC_FG_CHK = 1012;
+//C     #define IDM_SAVE                        40001
+const IDC_BG_CHK = 1013;
 //C     #define IDM_COPYTOCLIP                  40002
 const IDM_SAVE = 40001;
 //C     #define IDM_FILEOPEN                    40004
@@ -59,7 +63,7 @@ const IDM_SAVEAS = 40005;
 //C     #ifndef APSTUDIO_READONLY_SYMBOLS
 //C     #define _APS_NEXT_RESOURCE_VALUE        103
 //C     #define _APS_NEXT_COMMAND_VALUE         40006
-//C     #define _APS_NEXT_CONTROL_VALUE         1012
+//C     #define _APS_NEXT_CONTROL_VALUE         1013
 //C     #define _APS_NEXT_SYMED_VALUE           101
 //C     #endif
 //C     #endif

@@ -9,10 +9,28 @@ struct CELL{
 	int fg;
 	int bg;
 };
+struct CLIP{
+nothrow:
+	CELL[] cells;
+	int width;
+	int height;
+	int x,y;
+	int is_valid_pos(int x,int y){
+		if(x>=width || x<0)
+			return false;
+		if(y>=height || y<0)
+			return false;
+		int index=x+y*width;
+		if(index>=cells.length)
+			return false;
+		return true;
+	}
+};
 
 struct IMAGE{
 nothrow:
 	CELL[] cells;
+	CLIP clip;
 	int width;
 	int height;
 	int cell_width=8,cell_height=12;
@@ -244,6 +262,51 @@ int image_click(IMAGE *img,int x,int y,int flags)
 	return result;
 }
 
+int draw_cells(HDC hdc,RECT *rect,ref CELL[] cells,int row_width,int cell_width,int cell_height,
+			   int xoffset,int yoffset,
+			   const ubyte *font)
+{
+	import palette;
+	int result;
+	struct TMP{
+		BITMAPINFOHEADER bmiHeader;
+		DWORD[2] colors;
+	}
+	TMP bmi;
+	int i;
+	bmi.bmiHeader.biBitCount=8;
+	bmi.bmiHeader.biWidth=cell_width;
+	bmi.bmiHeader.biHeight=cell_height;
+	bmi.bmiHeader.biPlanes=1;
+	bmi.bmiHeader.biSizeImage=cell_width*cell_height;
+	bmi.bmiHeader.biXPelsPerMeter=0;
+	bmi.bmiHeader.biYPelsPerMeter=0;
+	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
+	for(i=0;i<cells.length;i++){
+		int x,y;
+		x=i%row_width;
+		x+=xoffset;
+		x*=cell_width;
+		y=i/row_width;
+		y+=yoffset;
+		y*=cell_height;
+		if(x>=rect.right)
+			continue;
+		if(y>=rect.bottom)
+			continue;
+		CELL *cell=&cells[i];
+		ushort a;
+		bmi.colors[0]=get_rgb_color(cell.bg);
+		bmi.colors[1]=get_rgb_color(cell.fg);
+		a=cell.val&0xFF;
+		SetDIBitsToDevice(hdc,x,y,cell_width,cell_height,
+						  0,0, //src xy
+						  0,cell_height, //startscan,scanlines
+						  font+a*8*12,
+						  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
+	}
+	return result;
+}
 int paint_image(HWND hwnd,HDC hdc)
 {
 	import palette;
@@ -264,6 +327,9 @@ int paint_image(HWND hwnd,HDC hdc)
 	if(img is null)
 		return result;
 
+	RECT rect;
+	GetClientRect(hwnd,&rect);
+
 	bmi.bmiHeader.biBitCount=8;
 	bmi.bmiHeader.biWidth=img.cell_width;
 	bmi.bmiHeader.biHeight=img.cell_height;
@@ -275,6 +341,21 @@ int paint_image(HWND hwnd,HDC hdc)
 	xoffset=0;
 	yoffset=0;
 
+
+	draw_cells(hdc,&rect,img.cells,img.width,img.cell_width,img.cell_height,
+				   xoffset,yoffset,font);
+
+	if(img.clip.cells.length>0){
+		draw_cells(hdc,&rect,img.clip.cells,img.clip.width,img.cell_width,img.cell_height,
+				   img.clip.x,img.clip.y,font);
+		rect.left=img.clip.x*img.cell_width;
+		rect.top=img.clip.y*img.cell_height;
+		rect.right=rect.left+img.clip.width*img.cell_width;
+		rect.bottom=rect.top+img.clip.height*img.cell_height;
+		DrawFocusRect(hdc,&rect);
+	}
+
+/*
 	for(i=0;i<img.cells.length;i++){
 		ushort a;
 		int x,y;
@@ -294,7 +375,7 @@ int paint_image(HWND hwnd,HDC hdc)
 						  font+a*img.cell_width*img.cell_height,
 						  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
 	}
-	RECT rect;
+*/
 	rect.left=img.cursor.x*img.cell_width;
 	rect.left+=xoffset;
 	rect.top=img.cursor.y*img.cell_height;

@@ -28,6 +28,20 @@ CONTROL_ANCHOR[] main_win_anchor=[
 int fg_color=0;
 int bg_color=1;
 
+int get_fg_color()
+{
+	if(IsDlgButtonChecked(hmaindlg,IDC_FG_CHK))
+		return fg_color;
+	else
+		return -1;
+}
+int get_bg_color()
+{
+	if(IsDlgButtonChecked(hmaindlg,IDC_BG_CHK))
+		return bg_color;
+	else
+		return -1;
+}
 int init_grippy(HWND hparent,int idc)
 {
 	int result=FALSE;
@@ -67,7 +81,100 @@ int process_mouse(int flags,int x,int y)
 	}
 	return 0;
 }
-
+int cursor_in_clip(IMAGE *img)
+{
+	int result=false;
+	if(img is null)
+		return result;
+	if(img.cursor.x >= img.clip.x){
+		if(img.cursor.y >= img.clip.y){
+			if(img.cursor.x < (img.clip.x+img.clip.width))
+				if(img.cursor.y < (img.clip.y+img.clip.height))
+					result=true;
+		}
+	}
+	return result;
+}
+int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
+{
+	int result=false;
+	if(img is null)
+		return result;
+	if(img.clip.width<=0 || img.clip.height<=0)
+		return result;
+	if(!cursor_in_clip(img))
+		return result;
+	void move_clip(int x,int y){
+		if(ctrl)
+			return;
+		img.clip.x+=x;
+		img.clip.y+=y;
+		result=true;
+		if(img.clip.x<0){
+			img.clip.x=0;
+			result=false;
+		}
+		if(img.clip.y<0){
+			img.clip.y=0;
+			result=false;
+		}
+		if(img.clip.x>=img.width){
+			img.clip.x=img.width-1;
+			result=false;
+		}
+		if(img.clip.y>=img.height){
+			img.clip.y=img.height-1;
+			result=false;
+		}
+	}
+	switch(vkey){
+	case VK_DELETE:
+		img.clip.cells.length=0;
+		img.clip.width=0;
+		img.clip.height=0;
+		result=true;
+		break;
+	case VK_LEFT:
+		move_clip(-1,0);
+		break;
+	case VK_RIGHT:
+		move_clip(1,0);
+		break;
+	case VK_UP:
+		move_clip(0,-1);
+		break;
+	case VK_DOWN:
+		move_clip(0,1);
+		break;
+	case VK_RETURN:
+		{
+			int x,y;
+			for(y=0;y<img.clip.height;y++){
+				for(x=0;x<img.clip.width;x++){
+					if(!img.clip.is_valid_pos(x,y))
+						continue;
+					int index=x+y*img.clip.width;
+					CELL *cell=&img.clip.cells[index];
+					int mx,my;
+					mx=x+img.clip.x;
+					my=y+img.clip.y;
+					img.set_fg(cell.fg,mx,my);
+					img.set_bg(cell.bg,mx,my);
+					img.set_char(cell.val,mx,my);
+				}
+			}
+			img.clip.cells.length=0;
+			img.clip.width=0;
+			img.clip.height=0;
+		}
+		break;
+	default:
+		break;
+	}
+	if(result)
+	   img.is_modified=true;
+	return result;	
+}
 WNDPROC old_image_proc=NULL;
 nothrow
 extern (Windows)
@@ -140,10 +247,14 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							if(3==code)
 								image_to_clipboard(img);
 							else if(0x16==code){
-								import_clipboard(hmaindlg,*img);
+								import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
 								img.is_modified=false;
 								PostMessage(hmaindlg,WM_APP,1,0);
 							}
+						}else if(0x16==code){
+							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
+							img.is_modified=false;
+							PostMessage(hmaindlg,WM_APP,1,0);
 						}
 						break;
 					}
@@ -164,18 +275,22 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				oy=img.cursor.y;
 				switch(vkey){
 					case VK_LEFT:
+						handle_clip_key(img,vkey,ctrl,shift);
 						img.move_cursor(-1,0);
 						process=TRUE;
 						break;
 					case VK_RIGHT:
+						handle_clip_key(img,vkey,ctrl,shift);
 						img.move_cursor(1,0);
 						process=TRUE;
 						break;
 					case VK_UP:
+						handle_clip_key(img,vkey,ctrl,shift);
 						img.move_cursor(0,-1);
 						process=TRUE;
 						break;
 					case VK_DOWN:
+						handle_clip_key(img,vkey,ctrl,shift);
 						img.move_cursor(0,1);
 						process=TRUE;
 						break;
@@ -186,14 +301,15 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						{
 							int x,y;
 							x=img.cursor.x;
-							x=img.cursor.y;
-							img.set_char(' ',x,y);
+							y=img.cursor.y;
+							if(!handle_clip_key(img,vkey,ctrl,shift))
+								img.set_char(' ',x,y);
 						}
 						break;
+					case VK_RETURN:
+						handle_clip_key(img,vkey,ctrl,shift);
+						break;
 					default:
-						if(ctrl){
-
-						}
 						break;
 				}
 				if(process){
@@ -260,17 +376,27 @@ int get_wnd_int(HWND hwnd)
 	return atoi(str.ptr);
 }
 int set_wind_int(HWND hwnd,int val)
-{											
+{
+	int result;
 	char[10] str=0;
 	_snprintf(str.ptr,str.length,"%i",val);
-	return SetWindowTextA(hwnd,str.ptr);
+	result=SetWindowTextA(hwnd,str.ptr);
+	SendMessage(hwnd,EM_SETSEL,0,-1);
+	SendMessage(hwnd,EM_SETSEL,-1,-1);
+	return result;
 }
 WNDPROC old_edit_proc=NULL;
 nothrow
 extern(Windows)
 BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
+	printf("==");
+	print_msg(msg,wparam,lparam,hwnd);
 	switch(msg){
+		case WM_GETDLGCODE:
+			if(VK_RETURN==wparam)
+				return DLGC_WANTALLKEYS;
+			break;
 		case WM_KEYDOWN:
 			{
 				int key=wparam;
@@ -279,7 +405,7 @@ BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					dir=1;
 				else if(VK_DOWN==key)
 					dir=-1;
-				if(dir){
+				if(dir || VK_RETURN==key){
 					int w,h;
 					int id;
 					int x=get_wnd_int(hwnd);
@@ -328,7 +454,7 @@ nothrow
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG){
+	version(_DEBUG2){
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
 		print_msg(msg,wparam,lparam,hwnd);
 	}
@@ -379,7 +505,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					case IDM_FILEOPEN:
 						{
 							IMAGE img;
-							file_open(hwnd,img);
+							file_open(hwnd,img,get_fg_color(),get_bg_color());
 						}
 						break;
 					case IDM_COPYTOCLIP:

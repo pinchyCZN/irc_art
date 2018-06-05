@@ -253,29 +253,29 @@ int get_str_dimensions(ubyte *str,int *width,int *height)
 	*height=line_count;
 	return 1;
 }
-int process_str(ubyte *str,ref IMAGE img)
+int process_str(ubyte *str,ref IMAGE img,void function(ref IMAGE,int,int,int,int,int) nothrow cell_writer,
+				int _fg,int _bg)
 {
 	int index=0;
 	int state=0;
 	int num_count,fg,bg;
 	int x=0,y=0;
-	int max_x,max_y;
 	int a;
-	get_str_dimensions(str,&max_x,&max_y);
-	img.resize_image(max_x,max_y);
-	fg=1;
-	bg=0;
+	if(_fg<0)
+		_fg=1;
+	if(_bg<0)
+		_bg=0;
+	fg=_fg;
+	bg=_bg;
 	while(fetch_next_char(str,&index,&a)){
 		if(0==a)
 			break;
 		if('\r'==a || '\n'==a){
-			fg=1;
-			bg=0;
+			fg=_fg;
+			bg=_bg;
 			x=0;
 			if(a=='\n')
 				y++;
-			if(y>=max_y)
-				break;
 		}else{
 			switch(state){
 				case 0:
@@ -284,9 +284,12 @@ int process_str(ubyte *str,ref IMAGE img)
 						state=1;
 					else{
 						if(!(a==2 || a==0x1D || a==0x1F || a==0x16 || a==0xF)){
+							cell_writer(img,fg,bg,a,x,y);
+							/*
 							img.set_fg(fg,x,y);
 							img.set_bg(bg,x,y);
 							img.set_char(a,x,y);
+							*/
 							x++;
 						}
 					}
@@ -345,22 +348,57 @@ int process_str(ubyte *str,ref IMAGE img)
 	return 1;
 
 }
-int import_txt(char *str,ref IMAGE img)
+
+void full_image_import(ref IMAGE img,int fg,int bg,int a,int x,int y)
 {
+	img.set_fg(fg,x,y);
+	img.set_bg(bg,x,y);
+	img.set_char(a,x,y);
+}
+int import_txt(char *str,ref IMAGE img,int fg,int bg)
+{
+	import std.algorithm.comparison:max;
 	int result=FALSE;
-	int width=0,height=0;
-	get_str_dimensions(cast(ubyte*)str,&width,&height);
-	if(width<=0 || height<=0){
-		return result;
-	}
-	if(width>1000)
-		width=500;
-	if(height>1000)
-		height=1000;
-	result=process_str(cast(ubyte*)str,img);
+	int max_x,max_y;
+	get_str_dimensions(cast(ubyte*)str,&max_x,&max_y);
+	if(max_x>1000)
+		max_x=1000;
+	if(max_y>10000)
+		max_y=10000;
+	max_x=max(img.width,max_x);
+	max_y=max(img.height,max_y);
+	img.resize_image(max_x,max_y);
+	result=process_str(cast(ubyte*)str,img,&full_image_import,fg,bg);
 	return result;
 }
-int file_open(HWND hwnd,ref IMAGE img)
+void clip_import(ref IMAGE img,int fg,int bg,int a,int x,int y)
+{
+	int index;
+	index=x+y*img.clip.width;
+	if(index>=img.clip.cells.length)
+		return;
+	img.clip.cells[index].fg=fg;
+	img.clip.cells[index].bg=bg;
+	img.clip.cells[index].val=cast(WCHAR)a;
+}
+int import_txt_clip(char *str,ref IMAGE img,int fg,int bg)
+{
+	int result=FALSE;
+	int max_x,max_y;
+	get_str_dimensions(cast(ubyte*)str,&max_x,&max_y);
+	if(max_x>1000)
+		max_x=1000;
+	if(max_y>1000)
+		max_y=1000;
+	img.clip.cells.length=max_x*max_y;
+	img.clip.width=max_x;
+	img.clip.height=max_y;
+	img.clip.x=img.cursor.x;
+	img.clip.y=img.cursor.y;
+	result=process_str(cast(ubyte*)str,img,&clip_import,fg,bg);
+	return result;
+}
+int file_open(HWND hwnd,ref IMAGE img,int fg,int bg)
 {
 	int result=FALSE;
 	OPENFILENAMEW ofn;
@@ -380,7 +418,7 @@ int file_open(HWND hwnd,ref IMAGE img)
 			fclose(f);
 			if(str){
 				str[str_size-1]=0;
-				result=process_str(cast(ubyte*)str,img);
+				result=process_str(cast(ubyte*)str,img,&full_image_import,fg,bg);
 				free(str);
 			}
 		}
@@ -388,7 +426,7 @@ int file_open(HWND hwnd,ref IMAGE img)
 	return result;
 }
 
-int import_clipboard(HWND hwnd,ref IMAGE img)
+int import_clipboard(HWND hwnd,ref IMAGE img,int to_img_clip,int fg,int bg)
 {
 	int result=FALSE;
 	if(OpenClipboard(NULL)){
@@ -399,7 +437,10 @@ int import_clipboard(HWND hwnd,ref IMAGE img)
 				char *tmp=strdup(str);
 				GlobalUnlock(htxt);
 				if(tmp){
-					result=import_txt(tmp,img);
+					if(to_img_clip)
+						result=import_txt_clip(tmp,img,fg,bg);
+					else
+						result=import_txt(tmp,img,fg,bg);
 					if(result)
 						img.is_modified=true;
 					free(tmp);
