@@ -2,6 +2,7 @@ module image;
 
 import core.sys.windows.windows;
 import core.stdc.stdlib;
+import core.stdc.string;
 
 nothrow:
 struct CELL{
@@ -115,14 +116,18 @@ nothrow:
 		height=h;
 		cells=tmp;
 		is_modified=true;
+		memset(&selection,0,selection.sizeof);
 	}
 	int selection_width()
 	{
-		return selection.left-selection.right;
+		return selection.right-selection.left;
 	}
 	int selection_height()
 	{
 		return selection.bottom-selection.top;
+	}
+	void clear_selection(){
+		memset(&selection,0,selection.sizeof);
 	}
 	void emit_color_str(ref string buf,int val,int full)
 	{
@@ -243,7 +248,7 @@ void create_vga_font()
 		}
 	}
 }
-int image_click(IMAGE *img,int x,int y,int flags)
+int image_click(IMAGE *img,int x,int y)
 {
 	int result=false;
 	if(img is null)

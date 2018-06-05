@@ -6,6 +6,7 @@ import core.sys.windows.commctrl;
 import core.stdc.ctype;
 import core.stdc.stdlib;
 import core.stdc.stdio;
+import core.stdc.string;
 import resource;
 import image;
 import palette;
@@ -62,12 +63,12 @@ int process_mouse(int flags,int x,int y)
 	if(flags&MK_CONTROL){
 		if(flags&MK_LBUTTON){
 			IMAGE *img=get_current_image();
-			if(image_click(img,x,y,0)){
+			if(image_click(img,x,y)){
 				img.set_fg(fg_color,img.cursor.x,img.cursor.y);
 			}
 		}else if(flags&MK_RBUTTON){
 			IMAGE *img=get_current_image();
-			if(image_click(img,x,y,0)){
+			if(image_click(img,x,y)){
 				img.set_bg(bg_color,img.cursor.x,img.cursor.y);
 			}
 		}
@@ -76,7 +77,16 @@ int process_mouse(int flags,int x,int y)
 	else{
 		if(flags&MK_LBUTTON){
 			IMAGE *img=get_current_image();
-			image_click(img,x,y,MK_LBUTTON);
+			if(img is null)
+				return 0;
+			int cx,cy;
+			cx=x/img.cell_width;
+			cy=y/img.cell_height;
+			img.selection.left=img.cursor.x;
+			img.selection.top=img.cursor.y;
+			img.selection.right=cx;
+			img.selection.bottom=cy;
+			img.is_modified=true;
 		}
 	}
 	return 0;
@@ -175,6 +185,83 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 	   img.is_modified=true;
 	return result;	
 }
+int handle_selection_key(IMAGE *img,int vkey,int ctrl,int shift)
+{
+	int result=false;
+	if(img is null)
+		return result;
+	switch(vkey){
+	case VK_DELETE:
+		{
+			int w,h;
+			w=img.selection_width();
+			h=img.selection_height();
+			if(w>0 && h>0){
+				int i,j;
+				for(i=0;i<h;i++){
+					for(j=0;j<w;j++){
+						int index;
+						int x,y;
+						index=j+i*w;
+						if(index>=img.cells.length)
+							break;
+						x=img.selection.left+j;
+						y=img.selection.top+i;
+						img.set_char(' ',x,y);
+						result=true;
+					}
+				}
+			}
+		}
+		break;
+	default:
+		break;
+	}
+	if(result){
+		img.is_modified=true;
+	}
+	return result;
+}
+int selection_to_clip(IMAGE *img)
+{
+	int result=false;
+	if(img is null)
+		return result;
+	int w,h;
+	w=img.selection_width();
+	h=img.selection_height();
+	if(w<=0 || h<=0)
+		return result;
+	img.clip.cells.length=w*h;
+	img.clip.width=w;
+	img.clip.height=h;
+	img.clip.x=img.selection.left;
+	img.clip.y=img.selection.top;
+	int i,j;
+	for(i=0;i<h;i++){
+		for(j=0;j<w;j++){
+			int src_index,dst_index;
+			int x,y;
+			x=img.selection.left+j;
+			y=img.selection.top+i;
+			src_index=x+y*img.width;
+			if(src_index>=img.cells.length)
+				continue;
+			dst_index=j+i*w;
+			if(dst_index>=img.clip.cells.length)
+				continue;
+			CELL *src,dst;
+			src=&img.cells[src_index];
+			dst=&img.clip.cells[dst_index];
+			*dst=*src;
+			result=true;
+		}
+	}
+	if(result)
+		img.is_modified=true;
+	return result;
+}
+
 WNDPROC old_image_proc=NULL;
 nothrow
 extern (Windows)
@@ -196,7 +283,11 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				int x,y;
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
-				process_mouse(MK_LBUTTON,x,y);
+				IMAGE *img=get_current_image();
+				if(img !is null){
+					image_click(img,x,y);
+					memset(&img.selection,0,img.selection.sizeof);
+				}
 			}
 			break;
 		case WM_MOUSEMOVE:
@@ -234,24 +325,33 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					img.set_char(code,x,y);
 					img.set_fg(fg_color,x,y);
 					img.move_cursor(1,0);
+					img.clear_selection();
 				}else if('\r'==code){
 					img.move_cursor(0,1);
+					img.clear_selection();
 				}else if('\b'==code){
 					img.move_cursor(-1,0);
 					x=img.cursor.x;
 					y=img.cursor.y;
 					img.set_char(' ',x,y);
+					img.clear_selection();
 				}else{
 					if(ctrl){
 						if(!shift){
-							if(3==code)
-								image_to_clipboard(img);
-							else if(0x16==code){
+							if(3==code){ //ctrl-c
+								if(img.selection_width()>0
+								   && img.selection_height()>0){
+									selection_to_clip(img);
+									memset(&img.selection,0,img.selection.sizeof);
+								}else{
+									image_to_clipboard(img);
+								}
+							}else if(0x16==code){ //ctrl-v
 								import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
 								img.is_modified=false;
 								PostMessage(hmaindlg,WM_APP,1,0);
 							}
-						}else if(0x16==code){
+						}else if(0x16==code){ //ctrl-v
 							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
 							img.is_modified=false;
 							PostMessage(hmaindlg,WM_APP,1,0);
@@ -303,7 +403,8 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							x=img.cursor.x;
 							y=img.cursor.y;
 							if(!handle_clip_key(img,vkey,ctrl,shift))
-								img.set_char(' ',x,y);
+								if(!handle_selection_key(img,vkey,ctrl,shift))
+									img.set_char(' ',x,y);
 						}
 						break;
 					case VK_RETURN:
