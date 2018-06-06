@@ -267,7 +267,7 @@ nothrow
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG) {
+	version(MSGDEBUG) {
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
@@ -555,7 +555,7 @@ nothrow
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG2){
+	version(MSGDEBUG){
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
 		print_msg(msg,wparam,lparam,hwnd);
 	}
@@ -714,7 +714,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(_DEBUG)
+	version(MSGDEBUG)
 	{
 		debug_console(hmaindlg);
 	}
