@@ -138,6 +138,18 @@ import resource;
 static int palette_w,palette_h;
 static int *palette;
 
+int get_extcindex(int x,int y,int pw,int ph)
+{
+	int index=x/(pw/4);
+	if(index>3)
+		index=3;
+	y=y/(ph/20);
+	index+=y*4;
+	index+=16;
+	if(index>99)
+		index=99;
+	return index;
+}
 int paint_colors(HWND hwnd,HDC hdc)
 {
 	BITMAPINFO bmi;
@@ -189,8 +201,6 @@ int paint_colors(HWND hwnd,HDC hdc)
 	bmi.bmiHeader.biHeight=ph;
 	bmi.bmiHeader.biPlanes=1;
 	bmi.bmiHeader.biSizeImage=pw*ph;
-	bmi.bmiHeader.biXPelsPerMeter=12;
-	bmi.bmiHeader.biYPelsPerMeter=12;
 	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
 	SetDIBitsToDevice(hdc,0,0,pw,ph,
 					  0,0, //src xy
@@ -224,8 +234,6 @@ void paint_current_colors(HWND hwnd,HDC hdc,int id,int fg,int bg)
 	bmi.bmiHeader.biHeight=1;
 	bmi.bmiHeader.biPlanes=1;
 	bmi.bmiHeader.biSizeImage=1;
-	bmi.bmiHeader.biXPelsPerMeter=12;
-	bmi.bmiHeader.biYPelsPerMeter=12;
 	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
 	StretchDIBits(hdc,0,0,w,h,
 				  0,0,1,1,
@@ -238,6 +246,86 @@ void palette_click(int x, int y,UINT msg,int *fg,int *bg)
 {
 	int index;
 	index=get_cindex(x,y,palette_w,palette_h);
+	switch(msg){
+		case WM_LBUTTONDOWN:
+			*fg=index;
+			break;
+		case WM_RBUTTONDOWN:
+			*bg=index;
+			break;
+		default:
+			break;
+	}
+}
+
+static int ext_palette_w,ext_palette_h;
+static int *ext_palette;
+
+int paint_ext_colors(HWND hwnd,HDC hdc)
+{
+	BITMAPINFO bmi;
+	int w,h,pw,ph;
+	int init=FALSE;
+	RECT rect;
+
+	GetWindowRect(hwnd,&rect);
+	w=rect.right-rect.left;
+	h=rect.bottom-rect.top;
+	if(ext_palette_w!=w || ext_palette_h!=h){
+		int size=w*h*4;
+		int *tmp=cast(int*)realloc(ext_palette,size);
+		if(tmp){
+			ext_palette=tmp;
+			init=TRUE;
+			ext_palette_w=w;
+			ext_palette_h=h;
+			memset(ext_palette,0,size);
+		}
+	}
+	if(!ext_palette)
+		return 0;
+	if(ext_palette_w<=0 || ext_palette_h<=0)
+		return 0;
+	pw=ext_palette_w;
+	ph=ext_palette_h;
+	if(init){
+		int x,y;
+		for(x=0;x<pw;x++){
+			for(y=0;y<ph;y++){
+				int c,index;
+				index=get_extcindex(x,y,pw,ph);
+				if(index>=color_lookup.length)
+					index=0;
+				c=color_lookup[index];
+				{
+					int offset;
+					offset=x+(ph-y-1)*pw; //flip
+					if(offset<(pw*ph))
+						ext_palette[offset]=c;
+				}
+			}
+		}
+	}
+	memset(&bmi,0,bmi.sizeof);
+	bmi.bmiHeader.biBitCount=32;
+	bmi.bmiHeader.biWidth=pw;
+	bmi.bmiHeader.biHeight=ph;
+	bmi.bmiHeader.biPlanes=1;
+	bmi.bmiHeader.biSizeImage=pw*ph;
+	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
+	SetDIBitsToDevice(hdc,0,0,pw,ph,
+					  0,0, //src xy
+					  0,ph, //startscan,scanlines
+					  ext_palette,
+					  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
+
+	return 0;
+}
+
+void ext_palette_click(int x, int y,UINT msg,int *fg,int *bg)
+{
+	int index;
+	index=get_extcindex(x,y,ext_palette_w,ext_palette_h);
 	switch(msg){
 		case WM_LBUTTONDOWN:
 			*fg=index;

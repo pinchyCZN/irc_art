@@ -402,6 +402,30 @@ int paint_image(HWND hwnd,HDC hdc)
 	return result;
 }
 
+void do_fill(IMAGE *img,int fg,int bg)
+{
+	if(img is null)
+		return;
+	int sw,sh;
+	sw=img.selection_width();
+	sh=img.selection_height();
+	if(sw<=0 || sh<=0){
+
+	}else{
+		int i,j;
+		for(i=0;i<sh;i++){
+			for(j=0;j<sw;j++){
+				int x,y;
+				x=img.selection.left+j;
+				y=img.selection.top+i;
+				if(fg>=0)
+					img.set_fg(fg,x,y);
+				if(bg>=0)
+					img.set_bg(bg,x,y);
+			}
+		}
+	}
+}
 void init_image()
 {
 	IMAGE *img;

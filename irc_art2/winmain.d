@@ -292,7 +292,6 @@ void toggle_check(HWND hwnd,int idc)
 	CheckDlgButton(hwnd,idc,state);
 }
 WNDPROC old_image_proc=NULL;
-nothrow
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -385,6 +384,8 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								img.selection.bottom=img.height;
 								img.selection.right=img.width;
 								img.is_modified=true;
+							}else if(6==code){ //ctrl-f
+								do_fill(img,get_fg_color(),get_bg_color());
 							}
 						}else if(0x16==code){ //ctrl-v
 							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
@@ -461,16 +462,36 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					x=img.cursor.x;
 					y=img.cursor.y;
 					if(ctrl){
+						int is_inside_clip(int x,int y){
+							int cx,cy,cw,ch;
+							cx=img.clip.x;
+							cy=img.clip.y;
+							cw=img.clip.width;
+							ch=img.clip.height;
+							if(0==cw || 0==ch)
+								return false;
+							if(x>=cx && x<(cx+cw)){
+								if(y>=cy && y<(cy+ch))
+									return true;
+							}
+							return false;
+						}
 						int fg,bg;
 						fg=get_fg_color();
 						bg=get_bg_color();
 						if(fg>=0){
-							img.set_fg(fg,ox,oy);
-							img.set_fg(fg,x,y);
+							if(!is_inside_clip(ox,oy)){
+								img.set_fg(fg,ox,oy);
+								if(!is_inside_clip(x,y))
+									img.set_fg(fg,x,y);
+							}
 						}
 						if(bg>=0){
-							img.set_bg(bg,ox,oy);
-							img.set_bg(bg,x,y);
+							if(!is_inside_clip(ox,oy)){
+								img.set_bg(bg,ox,oy);
+								if(!is_inside_clip(x,y))
+									img.set_bg(bg,x,y);
+							}
 						}
 					}
 				}
@@ -491,7 +512,6 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 }
 
 WNDPROC old_palette_proc=NULL;
-nothrow
 extern(Windows)
 BOOL palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -519,6 +539,35 @@ BOOL palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	}
 	return CallWindowProc(old_palette_proc,hwnd,msg,wparam,lparam);
 }
+WNDPROC old_ext_palette_proc=NULL;
+extern(Windows)
+BOOL ext_palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+	switch(msg){
+		case WM_LBUTTONDOWN:
+		case WM_MBUTTONDOWN:
+		case WM_RBUTTONDOWN:
+			{
+				int x,y;
+				HWND htmp;
+				x=LOWORD(lparam);
+				y=HIWORD(lparam);
+				ext_palette_click(x,y,msg,&fg_color,&bg_color);
+				htmp=GetDlgItem(hmaindlg,IDC_FG);
+				if(htmp)
+					InvalidateRect(htmp,NULL,FALSE);
+				htmp=GetDlgItem(hmaindlg,IDC_BG);
+				if(htmp)
+					InvalidateRect(htmp,NULL,FALSE);
+				PostMessage(hmaindlg,WM_APP,0,0);
+			}
+			break;
+		default:
+			break;
+	}
+	return CallWindowProc(old_palette_proc,hwnd,msg,wparam,lparam);
+}
+
 int get_wnd_int(HWND hwnd)
 {
 	char[10] str=0;
@@ -536,7 +585,6 @@ int set_wind_int(HWND hwnd,int val)
 	return result;
 }
 WNDPROC old_edit_proc=NULL;
-nothrow
 extern(Windows)
 BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -600,7 +648,6 @@ void display_image_size(HWND hwnd)
 	_snprintf(tmp.ptr,tmp.length,"%i",h);
 	SetDlgItemTextA(hwnd,IDC_ROWS,tmp.ptr);
 }
-nothrow
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -618,6 +665,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			old_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,cast(LONG_PTR)&palette_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
+			old_ext_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_EXT_COLORS),GWL_WNDPROC,cast(LONG_PTR)&ext_palette_proc);
 			SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
 			SendMessage(GetDlgItem(hwnd,IDC_ROWS),EM_LIMITTEXT,4,0);
 			SendMessage(GetDlgItem(hwnd,IDC_COLS),EM_LIMITTEXT,4,0);
@@ -717,6 +765,13 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							HWND htmp=di.hwndItem;
 							HDC hdc=di.hDC;
 							paint_current_colors(htmp,hdc,di.CtlID,fg_color,bg_color);
+						}
+						break;
+					case IDC_EXT_COLORS:
+						{
+							HWND htmp=di.hwndItem;
+							HDC hdc=di.hDC;
+							paint_ext_colors(htmp,hdc);
 						}
 						break;
 					default:
