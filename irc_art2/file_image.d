@@ -10,19 +10,20 @@ import std.stdio;
 import image;
 nothrow:
 
-void update_title(HWND hwnd,string title,int mod)
+void update_title(HWND hwnd,wstring title,int mod)
 {
-	string tmp=title;
+	wstring tmp=title;
 	if(mod)
-		tmp=tmp~"*";
+		tmp="*"~tmp;
 	tmp~="\0";
-	SetWindowTextA(hwnd,tmp.ptr);
+	SetWindowTextW(hwnd,tmp.ptr);
 }
-int write_image(string fname,string text)
+int write_image(wstring fname,string text)
 {
 	int result=FALSE;
 	FILE *f;
-	f=fopen(toStringz(fname),"wb");
+	fname~=0;
+	f=_wfopen(fname.ptr,"wb");
 	if(f){
 		fwrite(text.ptr,1,text.length,f);
 		fclose(f);
@@ -34,25 +35,37 @@ int write_image(string fname,string text)
 int init_ofn(OPENFILENAMEW *ofn,const WCHAR *title,HWND hwnd)
 {
 	ofn.lStructSize=OPENFILENAMEW.sizeof;
-	ofn.hInstance=GetModuleHandle(NULL);
 	ofn.hwndOwner=hwnd;
 	ofn.lpstrFilter="TEXT FILES (*.TXT)\0*.TXT\0ALL FILES (*.*)\0*.*\0\0";
 	ofn.lpstrTitle=title;
 	ofn.Flags=OFN_ENABLESIZING;
 	return TRUE;
 }
-
+wstring wchar_to_str(WCHAR[] str)
+{
+	wstring result;
+	foreach(WCHAR c;str){
+		if(0==c)
+			break;
+		result~=c;
+	}
+	return result;
+}
 int file_saveas(HWND hwnd,IMAGE *img)
 {
 	int result=FALSE;
 	OPENFILENAMEW ofn;
-	WCHAR[1024] tmp;
+	WCHAR[] tmp;
 	if(img is null)
 		return result;
 	init_ofn(&ofn,"Save"w.ptr,hwnd);
+	tmp.length=1024;
+	tmp[]=0;
 	ofn.lpstrFile=tmp.ptr;
 	ofn.nMaxFile=tmp.length;
 	if(GetOpenFileNameW(&ofn)){
+		tmp[tmp.length-1]=0;
+		img.fname=wchar_to_str(tmp);
 		write_image(img.fname,img.get_text());
 		update_title(hwnd,img.fname,img.is_modified);
 		result=TRUE;
@@ -355,10 +368,9 @@ void full_image_import(ref IMAGE img,int fg,int bg,int a,int x,int y)
 	img.set_bg(bg,x,y);
 	img.set_char(a,x,y);
 }
-int import_txt(char *str,ref IMAGE img,int fg,int bg)
+void resize_img_to_str(char *str,ref IMAGE img)
 {
 	import std.algorithm.comparison:max;
-	int result=FALSE;
 	int max_x,max_y;
 	get_str_dimensions(cast(ubyte*)str,&max_x,&max_y);
 	if(max_x>1000)
@@ -368,6 +380,11 @@ int import_txt(char *str,ref IMAGE img,int fg,int bg)
 	max_x=max(img.width,max_x);
 	max_y=max(img.height,max_y);
 	img.resize_image(max_x,max_y);
+}
+int import_txt(char *str,ref IMAGE img,int fg,int bg)
+{
+	int result=FALSE;
+	resize_img_to_str(str,img);
 	result=process_str(cast(ubyte*)str,img,&full_image_import,fg,bg);
 	return result;
 }
@@ -402,7 +419,7 @@ int file_open(HWND hwnd,ref IMAGE img,int fg,int bg)
 {
 	int result=FALSE;
 	OPENFILENAMEW ofn;
-	WCHAR[MAX_PATH] tmp;
+	WCHAR[MAX_PATH] tmp=0;
 	init_ofn(&ofn,"Open",hwnd);
 	ofn.lpstrFile=tmp.ptr;
 	ofn.nMaxFile=tmp.length;
@@ -418,6 +435,7 @@ int file_open(HWND hwnd,ref IMAGE img,int fg,int bg)
 			fclose(f);
 			if(str){
 				str[str_size-1]=0;
+				resize_img_to_str(str,img);
 				result=process_str(cast(ubyte*)str,img,&full_image_import,fg,bg);
 				free(str);
 			}

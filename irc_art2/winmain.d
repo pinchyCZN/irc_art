@@ -58,13 +58,32 @@ int init_grippy(HWND hparent,int idc)
 	return result;
 }
 
-int process_mouse(int flags,int x,int y)
+void select_drag(IMAGE *img,int cx,int cy)
+{
+	img.selection.right=cx;
+	img.selection.bottom=cy;
+	if(cx<img.selection.left){
+		img.selection.right=img.selection.left;
+		img.selection.left=cx;
+	}
+	if(cy<img.selection.top){
+		img.selection.bottom=img.selection.top;
+		img.selection.top=cy;
+	}
+}
+int process_mouse(int flags,short x,short y)
 {
 	if(flags&MK_CONTROL){
 		if(flags&MK_LBUTTON){
 			IMAGE *img=get_current_image();
 			if(image_click(img,x,y)){
-				img.set_fg(fg_color,img.cursor.x,img.cursor.y);
+				int fg,bg;
+				fg=get_fg_color();
+				bg=get_bg_color();
+				if(fg>=0)
+					img.set_fg(fg,img.cursor.x,img.cursor.y);
+				if(bg>=0)
+					img.set_bg(bg,img.cursor.x,img.cursor.y);
 			}
 		}else if(flags&MK_RBUTTON){
 			IMAGE *img=get_current_image();
@@ -80,12 +99,15 @@ int process_mouse(int flags,int x,int y)
 			if(img is null)
 				return 0;
 			int cx,cy;
+			if(x<0)
+				x=0;
+			if(y<0)
+				y=0;
 			cx=x/img.cell_width;
 			cy=y/img.cell_height;
 			img.selection.left=img.cursor.x;
 			img.selection.top=img.cursor.y;
-			img.selection.right=cx;
-			img.selection.bottom=cy;
+			select_drag(img,cx,cy);
 			img.is_modified=true;
 		}
 	}
@@ -261,13 +283,20 @@ int selection_to_clip(IMAGE *img)
 		img.is_modified=true;
 	return result;
 }
-
+void toggle_check(HWND hwnd,int idc)
+{
+	int chk=IsDlgButtonChecked(hwnd,idc);
+	int state=BST_CHECKED;
+	if(chk)
+		state=BST_UNCHECKED;
+	CheckDlgButton(hwnd,idc,state);
+}
 WNDPROC old_image_proc=NULL;
 nothrow
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(MSGDEBUG) {
+	version(_DEBUG) {
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
@@ -292,7 +321,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			break;
 		case WM_MOUSEMOVE:
 			{
-				int x,y;
+				short x,y;
 				int flags;
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
@@ -350,6 +379,12 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
 								img.is_modified=false;
 								PostMessage(hmaindlg,WM_APP,1,0);
+							}else if(1==code){ //ctrl-a
+								img.selection.left=0;
+								img.selection.top=0;
+								img.selection.bottom=img.height;
+								img.selection.right=img.width;
+								img.is_modified=true;
 							}
 						}else if(0x16==code){ //ctrl-v
 							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
@@ -410,6 +445,14 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					case VK_RETURN:
 						handle_clip_key(img,vkey,ctrl,shift);
 						break;
+					case '1':
+						if(ctrl)
+							toggle_check(hmaindlg,IDC_FG_CHK);
+						break;
+					case '2':
+						if(ctrl)
+							toggle_check(hmaindlg,IDC_BG_CHK);
+						break;
 					default:
 						break;
 				}
@@ -418,11 +461,17 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					x=img.cursor.x;
 					y=img.cursor.y;
 					if(ctrl){
-						img.set_bg(bg_color,ox,oy);
-						img.set_bg(bg_color,x,y);
-					}else if(shift){
-						img.set_fg(fg_color,ox,oy);
-						img.set_fg(fg_color,x,y);
+						int fg,bg;
+						fg=get_fg_color();
+						bg=get_bg_color();
+						if(fg>=0){
+							img.set_fg(fg,ox,oy);
+							img.set_fg(fg,x,y);
+						}
+						if(bg>=0){
+							img.set_bg(bg,ox,oy);
+							img.set_bg(bg,x,y);
+						}
 					}
 				}
 			}
@@ -605,8 +654,9 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						break;
 					case IDM_FILEOPEN:
 						{
-							IMAGE img;
-							file_open(hwnd,img,get_fg_color(),get_bg_color());
+							IMAGE *img=get_current_image();
+							if(img !is null)
+								file_open(hwnd,*img,get_fg_color(),get_bg_color());
 						}
 						break;
 					case IDM_COPYTOCLIP:
@@ -714,7 +764,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(MSGDEBUG)
+	version(_DEBUG)
 	{
 		debug_console(hmaindlg);
 	}

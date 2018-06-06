@@ -38,7 +38,7 @@ nothrow:
 	int is_modified;
 	POINT cursor;
 	RECT selection;
-	string fname;
+	wstring fname;
 	int is_valid_pos(int x,int y){
 		if(x>=width || x<0)
 			return false;
