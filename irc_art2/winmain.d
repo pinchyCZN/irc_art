@@ -316,6 +316,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					image_click(img,x,y);
 					memset(&img.selection,0,img.selection.sizeof);
 				}
+				return 0;
 			}
 			break;
 		case WM_MOUSEMOVE:
