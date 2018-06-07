@@ -16,7 +16,10 @@ import debug_print;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
-
+enum{
+	APP_SETFOCUS=0,
+	APP_REFRESH=1
+}
 nothrow{
 
 CONTROL_ANCHOR[] main_win_anchor=[
@@ -303,6 +306,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	}
 	
 	switch(msg){
+		case WM_KILLFOCUS:
+		case WM_SETFOCUS:
+			return 0;
+			break;
 		case WM_GETDLGCODE:
 			return DLGC_WANTARROWS|DLGC_WANTCHARS|DLGC_WANTMESSAGE|DLGC_WANTALLKEYS;
 			break;
@@ -316,6 +323,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					image_click(img,x,y);
 					memset(&img.selection,0,img.selection.sizeof);
 				}
+				SetFocus(hwnd);
 				return 0;
 			}
 			break;
@@ -378,7 +386,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							}else if(0x16==code){ //ctrl-v
 								import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
 								img.is_modified=false;
-								PostMessage(hmaindlg,WM_APP,1,0);
+								PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
 							}else if(1==code){ //ctrl-a
 								img.selection.left=0;
 								img.selection.top=0;
@@ -391,7 +399,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						}else if(0x16==code){ //ctrl-v
 							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
 							img.is_modified=false;
-							PostMessage(hmaindlg,WM_APP,1,0);
+							PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
 						}
 						break;
 					}
@@ -532,7 +540,7 @@ BOOL palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				htmp=GetDlgItem(hmaindlg,IDC_BG);
 				if(htmp)
 					InvalidateRect(htmp,NULL,FALSE);
-				PostMessage(hmaindlg,WM_APP,0,0);
+				PostMessage(hmaindlg,WM_APP,APP_SETFOCUS,0);
 			}
 			break;
 		default:
@@ -560,7 +568,7 @@ BOOL ext_palette_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				htmp=GetDlgItem(hmaindlg,IDC_BG);
 				if(htmp)
 					InvalidateRect(htmp,NULL,FALSE);
-				PostMessage(hmaindlg,WM_APP,0,0);
+				PostMessage(hmaindlg,WM_APP,APP_SETFOCUS,0);
 			}
 			break;
 		default:
@@ -679,10 +687,10 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_APP:
 			{
 				switch(wparam){
-					case 0:
+					case APP_SETFOCUS:
 						SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
 						break;
-					case 1:
+					case APP_REFRESH:
 						InvalidateRect(GetDlgItem(hwnd,IDC_IMAGE),NULL,TRUE);
 						display_image_size(hwnd);
 						break;
@@ -732,6 +740,14 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								TrackPopupMenu(hsubm,TPM_CENTERALIGN,p.x,p.y,0,hwnd,NULL);
 							}
 						}
+						break;
+					case IDC_FG:
+					case IDC_BG:
+						PostMessage(hwnd,WM_APP,APP_SETFOCUS,0);
+						break;
+					case IDC_FG_CHK:
+					case IDC_BG_CHK:
+						PostMessage(hwnd,WM_APP,APP_SETFOCUS,0);
 						break;
 					default:
 						break;
