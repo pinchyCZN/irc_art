@@ -394,7 +394,12 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								img.selection.right=img.width;
 								img.is_modified=true;
 							}else if(6==code){ //ctrl-f
-								do_fill(img,get_fg_color(),get_bg_color());
+								if(img.cursor_in_clip()){
+									flip_clip(img);
+								}else
+									do_fill(img,get_fg_color(),get_bg_color());
+							}else if(12==code){ //ctrl-r
+
 							}
 						}else if(0x16==code){ //ctrl-v
 							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
@@ -660,7 +665,7 @@ void display_image_size(HWND hwnd)
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(MSGDEBUG){
+	version(_DEBUG){
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
 		print_msg(msg,wparam,lparam,hwnd);
 	}
@@ -682,6 +687,13 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_SIZE:
 			{
 				anchor_resize(hwnd,main_win_anchor);
+			}
+			break;
+		case WM_DROPFILES:
+			{
+				HDROP hdrop=cast(HANDLE)wparam;
+				IMAGE *img=get_current_image();
+				drop_file(hwnd,hdrop,img,get_fg_color(),get_bg_color());
 			}
 			break;
 		case WM_APP:

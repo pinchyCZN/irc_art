@@ -39,6 +39,17 @@ nothrow:
 	POINT cursor;
 	RECT selection;
 	wstring fname;
+	int cursor_in_clip(){
+		int result=false;
+		if(0==clip.cells.length || 0==clip.width || 0==clip.height)
+			return result;
+		if(cursor.x>=clip.x && cursor.x<(clip.x+clip.width)){
+			if(cursor.y>=clip.y && cursor.y<(clip.y+clip.height)){
+				result=true;
+			}
+		}
+		return result;
+	}
 	int is_valid_pos(int x,int y){
 		if(x>=width || x<0)
 			return false;
@@ -425,6 +436,62 @@ void do_fill(IMAGE *img,int fg,int bg)
 			}
 		}
 	}
+}
+enum{LEFT,RIGHT,TOP,BOTTOM}
+int get_closest_corner(int cursor_x,int cursor_y,RECT *rect)
+{
+	int result=LEFT;
+	int[BOTTOM+1] vals;
+	int i,distance;
+	vals[LEFT]=abs(cursor_x-rect.left);
+	vals[RIGHT]=abs(rect.right-cursor_x);
+	vals[TOP]=abs(cursor_y-rect.top);
+	vals[BOTTOM]=abs(rect.bottom-cursor_y);
+	distance=int.max;
+	for(i=0;i<vals.length;i++){
+		if(vals[i]<distance){
+			result=i;
+			distance=vals[i];
+		}
+	}
+	return result;
+}
+void flip_clip(IMAGE *img)
+{
+	if(img is null)
+		return;
+	if(!img.cursor_in_clip())
+		return;
+	enum{VERTICAL,HORIZONTAL}
+	CLIP clip;
+	RECT rect;
+	int side,flip;
+	rect.left=img.clip.x;
+	rect.top=img.clip.y;
+	rect.right=img.clip.x+img.clip.width;
+	rect.bottom=img.clip.y+img.clip.height;
+	side=get_closest_corner(img.cursor.x,img.cursor.y,&rect);
+	flip=VERTICAL;
+	if(LEFT==side || RIGHT==side)
+		flip=HORIZONTAL;
+	int i,j;
+	clip=img.clip;
+	clip.cells=img.clip.cells.dup;
+	for(i=0;i<clip.height;i++){
+		for(j=0;j<clip.width;j++){
+			int src_index,dst_index;
+			if(VERTICAL==flip){
+				src_index=j+(clip.width*(clip.height-i-1));
+				dst_index=j+(clip.width*i);
+			}else{
+				src_index=(clip.width-j-1)+(clip.width*i);
+				dst_index=j+(clip.width*i);
+			}
+			clip.cells[dst_index]=img.clip.cells[src_index];
+		}
+	}
+	img.clip=clip;
+	img.is_modified=true;
 }
 void init_image()
 {

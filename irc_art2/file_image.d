@@ -415,6 +415,29 @@ int import_txt_clip(char *str,ref IMAGE img,int fg,int bg)
 	result=process_str(cast(ubyte*)str,img,&clip_import,fg,bg);
 	return result;
 }
+int import_file(WCHAR *fname,ref IMAGE img,int fg,int bg)
+{
+	int result=false;
+	if(fname is null)
+		return result;
+	FILE *f;
+	f=_wfopen(fname,"rb");
+	if(f){
+		char *str;
+		int str_size=0x100000;
+		str=cast(char*)calloc(str_size,1);
+		if(str)
+			fread(str,1,str_size,f);
+		fclose(f);
+		if(str){
+			str[str_size-1]=0;
+			resize_img_to_str(str,img);
+			result=process_str(cast(ubyte*)str,img,&full_image_import,fg,bg);
+			free(str);
+		}
+	}
+	return result;
+}
 int file_open(HWND hwnd,ref IMAGE img,int fg,int bg)
 {
 	int result=FALSE;
@@ -424,22 +447,7 @@ int file_open(HWND hwnd,ref IMAGE img,int fg,int bg)
 	ofn.lpstrFile=tmp.ptr;
 	ofn.nMaxFile=tmp.length;
 	if(GetOpenFileNameW(&ofn)){
-		FILE *f;
-		f=_wfopen(tmp.ptr,"rb");
-		if(f){
-			char *str;
-			int str_size=0x100000;
-			str=cast(char*)calloc(str_size,1);
-			if(str)
-				fread(str,1,str_size,f);
-			fclose(f);
-			if(str){
-				str[str_size-1]=0;
-				resize_img_to_str(str,img);
-				result=process_str(cast(ubyte*)str,img,&full_image_import,fg,bg);
-				free(str);
-			}
-		}
+		result=import_file(tmp.ptr,img,fg,bg);
 	}
 	return result;
 }
@@ -466,6 +474,20 @@ int import_clipboard(HWND hwnd,ref IMAGE img,int to_img_clip,int fg,int bg)
 			}
 		}
 		CloseClipboard();
+	}
+	return result;
+}
+
+int drop_file(HWND hwnd,HDROP hdrop,IMAGE *img,int fg,int bg)
+{
+	int result=false;
+	if(img is null || hdrop is null)
+		return result;
+	WCHAR[1024] fname;
+	int count;
+	count=DragQueryFile(hdrop,0,fname.ptr,fname.length);
+	if(count>0){
+		import_file(fname.ptr,*img,fg,bg);
 	}
 	return result;
 }
