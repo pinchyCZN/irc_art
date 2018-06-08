@@ -294,6 +294,39 @@ void toggle_check(HWND hwnd,int idc)
 		state=BST_UNCHECKED;
 	CheckDlgButton(hwnd,idc,state);
 }
+extern (Windows)
+BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+	static HWND hparent;
+	switch(msg){
+	case WM_INITDIALOG:
+		hparent=cast(HWND)lparam;
+		break;
+	case WM_COMMAND:
+		int idc=LOWORD(wparam);
+		switch(idc){
+		case IDC_TEXT:
+			{
+				int i=0;
+				i++;
+			}
+			break;
+		case IDCANCEL:
+			EndDialog(hwnd,0);
+			break;
+		case IDOK:
+			EndDialog(hwnd,0);
+			break;
+		default:
+			break;
+		}
+		break;
+	default:
+		break;
+	}
+	return FALSE;
+}
+
 WNDPROC old_image_proc=NULL;
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -424,6 +457,9 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				ox=img.cursor.x;
 				oy=img.cursor.y;
 				switch(vkey){
+					case VK_INSERT:
+						DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)hwnd);
+						break;
 					case VK_LEFT:
 						handle_clip_key(img,vkey,ctrl,shift);
 						img.move_cursor(-1,0);
@@ -598,6 +634,7 @@ int set_wind_int(HWND hwnd,int val)
 	SendMessage(hwnd,EM_SETSEL,-1,-1);
 	return result;
 }
+
 WNDPROC old_edit_proc=NULL;
 extern(Windows)
 BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)

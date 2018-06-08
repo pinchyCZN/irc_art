@@ -9,8 +9,10 @@ module resource;
 const IDD_MAINDLG = 101;
 //C     #define IDD_INSTALL_DIALOG              103
 const IDR_MENU1 = 102;
-//C     #define IDC_IMAGE                       1000
+//C     #define IDD_TEXT                        104
 const IDD_INSTALL_DIALOG = 103;
+//C     #define IDC_IMAGE                       1000
+const IDD_TEXT = 104;
 //C     #define IDC_ROWS                        1001
 const IDC_IMAGE = 1000;
 //C     #define IDC_COLS                        1002
@@ -41,14 +43,22 @@ const IDC_TXT_APPDATA = 1009;
 const IDC_NO_INI = 1010;
 //C     #define IDC_GRIPPY                      1011
 const IDC_FILE = 1010;
-//C     #define IDC_CHECK1                      1012
-const IDC_GRIPPY = 1011;
 //C     #define IDC_FG_CHK                      1012
-const IDC_CHECK1 = 1012;
+const IDC_GRIPPY = 1011;
 //C     #define IDC_BG_CHK                      1013
 const IDC_FG_CHK = 1012;
-//C     #define IDM_SAVE                        40001
+//C     #define IDC_EDIT                        1013
 const IDC_BG_CHK = 1013;
+//C     #define IDC_TEXT                        1013
+const IDC_EDIT = 1013;
+//C     #define IDC_TEXTCOLOR                   1014
+const IDC_TEXT = 1013;
+//C     #define IDC_CHECK2                      1015
+const IDC_TEXTCOLOR = 1014;
+//C     #define IDC_TEXT_STYLE                  1016
+const IDC_CHECK2 = 1015;
+//C     #define IDM_SAVE                        40001
+const IDC_TEXT_STYLE = 1016;
 //C     #define IDM_COPYTOCLIP                  40002
 const IDM_SAVE = 40001;
 //C     #define IDM_FILEOPEN                    40004
@@ -61,9 +71,9 @@ const IDM_SAVEAS = 40005;
 // 
 //C     #ifdef APSTUDIO_INVOKED
 //C     #ifndef APSTUDIO_READONLY_SYMBOLS
-//C     #define _APS_NEXT_RESOURCE_VALUE        103
+//C     #define _APS_NEXT_RESOURCE_VALUE        105
 //C     #define _APS_NEXT_COMMAND_VALUE         40006
-//C     #define _APS_NEXT_CONTROL_VALUE         1013
+//C     #define _APS_NEXT_CONTROL_VALUE         1017
 //C     #define _APS_NEXT_SYMED_VALUE           101
 //C     #endif
 //C     #endif
