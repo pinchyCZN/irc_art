@@ -59,10 +59,10 @@ const IDC_TEXTCOLOR = 1014;
 const IDC_CHECK2 = 1015;
 //C     #define IDC_TEXT_STYLE                  1016
 const IDC_3D = 1015;
-//C     #define IDC_EDIT1                       1017
+//C     #define IDC_FONT                        1016
 const IDC_TEXT_STYLE = 1016;
 //C     #define IDC_STATUS                      1017
-const IDC_EDIT1 = 1017;
+const IDC_FONT = 1016;
 //C     #define IDM_SAVE                        40001
 const IDC_STATUS = 1017;
 //C     #define IDM_COPYTOCLIP                  40002

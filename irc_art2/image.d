@@ -80,7 +80,7 @@ string get_text_cells(CELL[] cells,int width,int height)
 				emit_fg=TRUE;
 			if(emit_fg || emit_bg){
 				result~=3;
-				if(emit_fg){
+				if(emit_fg || emit_bg){
 					int full=FALSE;
 					if(!emit_bg)
 						full=is_cell_num(cells,width,height,j+1,i);
@@ -98,7 +98,7 @@ string get_text_cells(CELL[] cells,int width,int height)
 			result~=a;
 			tmp=*c;
 		}
-		result~='\n';
+		result~="\r\n";
 	}
 	return result;
 }
@@ -236,7 +236,7 @@ IMAGE *get_current_image()
 }
 void create_vga_font()
 {
-	import vga737;
+	import fonts;
 	import unicode_font;
 	const int vga_count=vga737_bin.length;
 	const int total=vga737_bin.length+block_elements.length;

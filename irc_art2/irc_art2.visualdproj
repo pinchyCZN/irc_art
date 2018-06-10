@@ -432,6 +432,7 @@
   <File path="anchor_system.d" />
   <File path="debug_print.d" />
   <File path="file_image.d" />
+  <File path="fonts.d" />
   <File path="image.d" />
   <File path="palette.d" />
   <File path="..\resource.h" customcmd="echo htod &quot;$(InputPath)&quot;
@@ -440,7 +441,6 @@ rem echo move &quot;$(ProjectDir)\..\resource.d&quot;  &quot;$(InputDir)\resourc
 " tool="Custom" dependencies="..\resource.rc" outfile="resource.d" />
   <File path="text_printer.d" />
   <File path="unicode_font.d" />
-  <File path="vga737.d" />
   <File path="winmain.d" />
  </Folder>
 </DProject>

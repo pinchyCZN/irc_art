@@ -6,7 +6,7 @@ import core.stdc.stdio;
 import core.stdc.stdlib;
 import resource;
 import image;
-import vga737;
+import fonts;
 import debug_print;
 
 nothrow:
@@ -18,8 +18,9 @@ struct TEXT_PARAMS{
 TEXT_PARAMS text_params={NULL,null,-1,-1};
 int flag_is3d=0;
 int flag_color=0;
+int flag_font=VGA737;
 
-void print_text(char *str,int is3d,int iscolor)
+void print_text(char *str,int is3d,int iscolor,int font_type)
 {
 	IMAGE *img=text_params.img;
 	if(img is null)
@@ -27,6 +28,7 @@ void print_text(char *str,int is3d,int iscolor)
 	int len=strlen(str);
 	int w,h;
 	int fg,bg,tg;
+	FONT font=get_font(font_type);
 	fg=text_params.fg;
 	bg=text_params.bg;
 	tg=fg+1;
@@ -36,8 +38,8 @@ void print_text(char *str,int is3d,int iscolor)
 		bg=1;
 		tg=15;
 	}
-	w=len*8;
-	h=12;
+	w=len*font.width;
+	h=font.height;
 	if(is3d && len>0)
 		w++;
 	img.clip.cells.length=w*h;
@@ -51,33 +53,35 @@ void print_text(char *str,int is3d,int iscolor)
 		c.bg=bg;
 		c.val=0;
 	}
+
 	int index=0;
 	while(1){
 		ubyte a=str[index];
 		if(0==a)
 			break;
 		if(iscolor){
-			fg=rand()%(15-3);
-			fg+=3;
-			tg++;
+			fg=rand()%16;
+			if(fg<=1)
+				fg+=2;
+			tg=fg+1;
 			if(tg>15)
-				tg=fg-2;
+				tg=2;
 		}
 		int i,j;
-		for(i=0;i<12;i++){
-			int k=(a*12)+i;
-			if(k>=vga737_bin.length)
+		for(i=0;i<font.height;i++){
+			int k=(a*font.height)+i;
+			if(k>=font.data.length)
 				continue;
-			int x=vga737_bin[k];
-			for(j=7;j>=0;j--){
-				int bit=x&(1<<(7-j));
-				int c_index=(index*8)+i*w+j;
+			int x=font.data[k];
+			for(j=font.width-1;j>=0;j--){
+				int bit=x&(1<<(font.width-1-j));
+				int c_index=(index*font.width)+i*w+j;
 				if(c_index>=clip.cells.length)
 					continue;
 				if(bit){
 					clip.cells[c_index].bg=fg;
 					if(is3d){
-						c_index=(index*8)+i*w+j+1;
+						c_index=(index*font.width)+i*w+j+1;
 						if(c_index<clip.cells.length)
 							clip.cells[c_index].bg=tg;
 					}
@@ -93,6 +97,7 @@ void toggle_check_button(HWND hwnd,int idc)
 	int flag=IsDlgButtonChecked(hwnd,idc);
 	(BST_CHECKED==flag)?(flag=BST_UNCHECKED):(flag=BST_CHECKED);
 	CheckDlgButton(hwnd,idc,flag);
+	SendMessage(hwnd,WM_APP,0,0);
 }
 private WNDPROC old_edit_proc=NULL;
 private extern(C)
@@ -101,6 +106,9 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	print_msg(msg,wparam,lparam,hwnd);
 	switch(msg){
 		case WM_GETDLGCODE:
+			int key=wparam;
+			//if(VK_RETURN==key)
+			//	return DLGC_WANTMESSAGE;
 			break;
 		case WM_COPY:
 			return 0;
@@ -109,6 +117,7 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			{
 				int key=wparam;
 				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
+				int shift=GetKeyState(VK_SHIFT)&0x8000;
 				switch(key){
 				case 'A':
 					if(ctrl)
@@ -139,6 +148,11 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						toggle_check_button(GetParent(hwnd),IDC_3D);
 					}
 					break;
+				case VK_RETURN:
+					if(shift){
+						return 0;
+					}
+					break;
 				default:
 					break;
 				}
@@ -150,6 +164,38 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	return CallWindowProc(old_edit_proc,hwnd,msg,wparam,lparam);
 }
 
+void init_font_combo(HWND hwnd,int idc,int flag)
+{
+	HWND hcombo=GetDlgItem(hwnd,idc);
+	if(hcombo is null)
+		return;
+	struct FONT_LIST{
+		wstring name;
+		int id;
+	}
+	FONT_LIST[] font_list=[
+		{"VGA 737",VGA737},
+		{"FONT8x8",FONT8X8},
+	];
+	foreach(ref f;font_list){
+		wstring tmp;
+		int index;
+		tmp=f.name~'\0';
+		index=SendMessage(hcombo,CB_ADDSTRING,0,cast(LPARAM)tmp.ptr);
+		if(index>=0){
+			SendMessage(hcombo,CB_SETITEMDATA,index,f.id);
+		}
+	}
+	SendMessage(hcombo,CB_SETCURSEL,0,0);
+	int i;
+	for(i=0;i<font_list.length;i++){
+		int val=SendMessage(hcombo,CB_GETITEMDATA,i,0);
+		if(val==flag){
+			SendMessage(hcombo,CB_SETCURSEL,i,0);
+			break;
+		}
+	}
+}
 
 extern (Windows)
 BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -172,6 +218,7 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					CheckDlgButton(hwnd,IDC_3D,BST_CHECKED);
 				if(flag_color)
 					CheckDlgButton(hwnd,IDC_TEXTCOLOR,BST_CHECKED);
+				init_font_combo(hwnd,IDC_FONT,flag_font);
 			}
 			break;
 		case WM_COMMAND:
@@ -185,12 +232,27 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							char[256] str=0;
 							GetWindowTextA(htext,str.ptr,str.length);
 							str[$-1]=0;
-							int is3d,iscolor;
-							is3d=BST_CHECKED==IsDlgButtonChecked(hwnd,IDC_3D);
-							iscolor=BST_CHECKED==IsDlgButtonChecked(hwnd,IDC_TEXTCOLOR);
-							print_text(str.ptr,is3d,iscolor);
+							flag_is3d=BST_CHECKED==IsDlgButtonChecked(hwnd,IDC_3D);
+							flag_color=BST_CHECKED==IsDlgButtonChecked(hwnd,IDC_TEXTCOLOR);
+							int index=SendDlgItemMessage(hwnd,IDC_FONT,CB_GETCURSEL,0,0);
+							if(index>=0){
+								flag_font=SendDlgItemMessage(hwnd,IDC_FONT,CB_GETITEMDATA,index,0);
+							}
+							print_text(str.ptr,flag_is3d,flag_color,flag_font);
 							InvalidateRect(GetDlgItem(text_params.hparent,IDC_IMAGE),NULL,TRUE);
 						}
+					}
+					break;
+				case IDC_FONT:
+					if(CBN_SELCHANGE==HIWORD(wparam)){
+						HWND hcombo=cast(HWND)lparam;
+						int index=SendMessage(hcombo,CB_GETCURSEL,0,0);
+						if(index>=0){
+							int val=SendMessage(hcombo,CB_GETITEMDATA,index,0);
+							if(val>=0)
+								flag_font=val;
+						}
+						SendMessage(hwnd,WM_APP,0,0);
 					}
 					break;
 				case IDC_3D:
