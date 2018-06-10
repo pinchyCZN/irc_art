@@ -8,6 +8,7 @@ import std.string;
 import std.utf;
 import std.stdio;
 import image;
+import resource;
 nothrow:
 
 void update_title(HWND hwnd,wstring title,int mod)
@@ -490,4 +491,32 @@ int drop_file(HWND hwnd,HDROP hdrop,IMAGE *img,int fg,int bg)
 		import_file(fname.ptr,*img,fg,bg);
 	}
 	return result;
+}
+
+int get_max_line_len(const char *str)
+{
+	int max=0;
+	int index=0;
+	int len=0;
+	while(1){
+		char a=str[index++];
+		if(0==a || '\r'==a || '\n'==a){
+			if(len>max){
+				max=len;
+			}
+			len=0;
+		}else{
+			len++;
+		}
+		if(0==a)
+			break;
+	}
+	return max;
+}
+void print_str_len(HWND hparent,const char *str)
+{
+	int len=get_max_line_len(str);
+	char[80] tmp;
+	_snprintf(tmp.ptr,tmp.length,"copied tmp max len=%i",len);
+	SetDlgItemTextA(hparent,IDC_STATUS,tmp.ptr);
 }

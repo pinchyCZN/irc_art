@@ -55,10 +55,16 @@ const IDC_EDIT = 1013;
 const IDC_TEXT = 1013;
 //C     #define IDC_CHECK2                      1015
 const IDC_TEXTCOLOR = 1014;
-//C     #define IDC_TEXT_STYLE                  1016
+//C     #define IDC_3D                          1015
 const IDC_CHECK2 = 1015;
-//C     #define IDM_SAVE                        40001
+//C     #define IDC_TEXT_STYLE                  1016
+const IDC_3D = 1015;
+//C     #define IDC_EDIT1                       1017
 const IDC_TEXT_STYLE = 1016;
+//C     #define IDC_STATUS                      1017
+const IDC_EDIT1 = 1017;
+//C     #define IDM_SAVE                        40001
+const IDC_STATUS = 1017;
 //C     #define IDM_COPYTOCLIP                  40002
 const IDM_SAVE = 40001;
 //C     #define IDM_FILEOPEN                    40004
@@ -73,7 +79,7 @@ const IDM_SAVEAS = 40005;
 //C     #ifndef APSTUDIO_READONLY_SYMBOLS
 //C     #define _APS_NEXT_RESOURCE_VALUE        105
 //C     #define _APS_NEXT_COMMAND_VALUE         40006
-//C     #define _APS_NEXT_CONTROL_VALUE         1017
+//C     #define _APS_NEXT_CONTROL_VALUE         1018
 //C     #define _APS_NEXT_SYMED_VALUE           101
 //C     #endif
 //C     #endif

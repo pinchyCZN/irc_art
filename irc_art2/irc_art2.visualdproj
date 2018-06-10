@@ -438,6 +438,7 @@
 htod &quot;$(InputPath)&quot;
 rem echo move &quot;$(ProjectDir)\..\resource.d&quot;  &quot;$(InputDir)\resource&quot;
 " tool="Custom" dependencies="..\resource.rc" outfile="resource.d" />
+  <File path="text_printer.d" />
   <File path="unicode_font.d" />
   <File path="vga737.d" />
   <File path="winmain.d" />

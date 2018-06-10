@@ -27,6 +27,81 @@ nothrow:
 		return true;
 	}
 };
+int is_cell_num(CELL[] cells,int width,int height,int x,int y)
+{
+	int result=FALSE;
+	if(x>=0 && x<width){
+		if(y>=0 && y<height){
+			int a;
+			CELL *c=&cells[x+y*width];
+			a=c.val;
+			if(a>='0' && a<='9')
+				result=TRUE;
+		}
+	}
+	return result;
+}
+void emit_color_str(ref string buf,int val,int full)
+{
+	int result=0;
+	int i,div;
+	if(val<0 || val>99)
+		val=0;
+	div=10;
+	for(i=0;i<2;i++){
+		int x=val/div;
+		x=x%10;
+		div=1;
+		if(!full){
+			if(0==i && 0==x)
+				continue;
+		}
+		buf~=cast(char)(x+'0');
+	}
+}
+string get_text_cells(CELL[] cells,int width,int height)
+{
+	int i,j;
+	string result="";
+	for(i=0;i<height;i++){
+		CELL tmp={0xFFFF,-1,-1};
+		for(j=0;j<width;j++){
+			int emit_bg=FALSE;
+			int emit_fg=FALSE;
+			int index;
+			CELL *c;
+			index=j+i*width;
+			if(index>=cells.length)
+				break;
+			c=&cells[index];
+			if(c.bg!=tmp.bg)
+				emit_bg=TRUE;
+			if(c.fg!=tmp.fg)
+				emit_fg=TRUE;
+			if(emit_fg || emit_bg){
+				result~=3;
+				if(emit_fg){
+					int full=FALSE;
+					if(!emit_bg)
+						full=is_cell_num(cells,width,height,j+1,i);
+					emit_color_str(result,c.fg,full);
+				}
+				if(emit_bg){
+					int full=is_cell_num(cells,width,height,j+1,i);
+					result~=',';
+					emit_color_str(result,c.bg,full);
+				}
+			}
+			WCHAR a=c.val;
+			if(a<' ')
+				a=' ';
+			result~=a;
+			tmp=*c;
+		}
+		result~='\n';
+	}
+	return result;
+}
 
 struct IMAGE{
 nothrow:
@@ -140,80 +215,13 @@ nothrow:
 	void clear_selection(){
 		memset(&selection,0,selection.sizeof);
 	}
-	void emit_color_str(ref string buf,int val,int full)
-	{
-		int result=0;
-		int i,div;
-		if(val<0 || val>99)
-			val=0;
-		div=10;
-		for(i=0;i<2;i++){
-			int x=val/div;
-			x=x%10;
-			div=1;
-			if(!full){
-				if(0==i && 0==x)
-					continue;
-			}
-			buf~=cast(char)(x+'0');
-		}
+	void clear_clip(){
+		clip.cells.length=0;
+		clip.width=0;
+		clip.height=0;
 	}
-	int is_cell_num(int x,int y)
-	{
-		int result=FALSE;
-		if(x>=0 && x<width){
-			if(y>=0 && y<height){
-				int a;
-				CELL *c=&cells[x+y*width];
-				a=c.val;
-				if(a>='0' && a<='9')
-					result=TRUE;
-			}
-		}
-		return result;
-	}
-	string get_text()
-	{
-		int i,j;
-		string result="";
-		for(i=0;i<height;i++){
-			CELL tmp={0xFFFF,-1,-1};
-			for(j=0;j<width;j++){
-				int emit_bg=FALSE;
-				int emit_fg=FALSE;
-				int index;
-				CELL *c;
-				index=j+i*width;
-				if(index>=cells.length)
-					break;
-				c=&cells[index];
-				if(c.bg!=tmp.bg)
-					emit_bg=TRUE;
-				if(c.fg!=tmp.fg)
-					emit_fg=TRUE;
-				if(emit_fg || emit_bg){
-					result~=3;
-					if(emit_fg){
-						int full=FALSE;
-						if(!emit_bg)
-							full=is_cell_num(j+1,i);
-						emit_color_str(result,c.fg,full);
-					}
-					if(emit_bg){
-						int full=is_cell_num(j+1,i);
-						result~=',';
-						emit_color_str(result,c.bg,full);
-					}
-				}
-				WCHAR a=c.val;
-				if(a<' ')
-					a=' ';
-				result~=a;
-				tmp=*c;
-			}
-			result~='\n';
-		}
-		return result;
+	string get_text(){
+		return get_text_cells(cells,width,height);
 	}
 };
 IMAGE[] images;

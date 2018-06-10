@@ -12,6 +12,7 @@ import image;
 import palette;
 import anchor_system;
 import file_image;
+import text_printer;
 import debug_print;
 
 HINSTANCE ghinstance=NULL;
@@ -27,6 +28,7 @@ CONTROL_ANCHOR[] main_win_anchor=[
 	{IDC_IMAGE,ANCHOR_LEFT|ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
 	{IDC_EXT_COLORS,ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
 	{IDC_EXTC_SBAR,ANCHOR_RIGHT|ANCHOR_TOP|ANCHOR_BOTTOM},
+	{IDC_STATUS,ANCHOR_RIGHT|ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
 ];
 int fg_color=0;
@@ -294,44 +296,12 @@ void toggle_check(HWND hwnd,int idc)
 		state=BST_UNCHECKED;
 	CheckDlgButton(hwnd,idc,state);
 }
-extern (Windows)
-BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
-{
-	static HWND hparent;
-	switch(msg){
-	case WM_INITDIALOG:
-		hparent=cast(HWND)lparam;
-		break;
-	case WM_COMMAND:
-		int idc=LOWORD(wparam);
-		switch(idc){
-		case IDC_TEXT:
-			{
-				int i=0;
-				i++;
-			}
-			break;
-		case IDCANCEL:
-			EndDialog(hwnd,0);
-			break;
-		case IDOK:
-			EndDialog(hwnd,0);
-			break;
-		default:
-			break;
-		}
-		break;
-	default:
-		break;
-	}
-	return FALSE;
-}
 
 WNDPROC old_image_proc=NULL;
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG) {
+	version(M_DEBUG) {
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
@@ -414,7 +384,15 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 									selection_to_clip(img);
 									memset(&img.selection,0,img.selection.sizeof);
 								}else{
-									image_to_clipboard(img);
+									if(img.clip.width>0 && img.clip.height>0){
+										string tmp=get_text_cells(img.clip.cells,img.clip.width,img.clip.height);
+										if(tmp.length>0){
+											tmp~='\0';
+											copy_str_clipboard(tmp.ptr);
+										}
+									}else{
+										image_to_clipboard(img);
+									}
 								}
 							}else if(0x16==code){ //ctrl-v
 								import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
@@ -458,7 +436,31 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				oy=img.cursor.y;
 				switch(vkey){
 					case VK_INSERT:
-						DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)hwnd);
+						{
+							TEXT_PARAMS tp;
+							tp.hparent=hmaindlg;
+							tp.img=get_current_image();
+							tp.fg=get_fg_color();
+							tp.bg=get_bg_color();
+							if(tp.img is null)
+								break;
+							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)&tp);
+						}
+						break;
+					case VK_HOME:
+						{
+							if(0==img.cursor.x){
+								img.move_cursor(0,-img.cursor.y);
+							}else{
+								img.move_cursor(-img.cursor.x,0);
+							}
+						}
+						break;
+					case VK_END:
+						{
+							img.move_cursor(-img.cursor.x,0);
+							img.move_cursor(img.width-1,0);
+						}
 						break;
 					case VK_LEFT:
 						handle_clip_key(img,vkey,ctrl,shift);
@@ -555,6 +557,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		if(img.is_modified){
 			InvalidateRect(hwnd,NULL,FALSE);
 			img.is_modified=false;
+			update_status(hmaindlg);
 		}
 	}
 
@@ -699,10 +702,31 @@ void display_image_size(HWND hwnd)
 	_snprintf(tmp.ptr,tmp.length,"%i",h);
 	SetDlgItemTextA(hwnd,IDC_ROWS,tmp.ptr);
 }
+void update_status(HWND hwnd)
+{
+	HWND hstatus=GetDlgItem(hwnd,IDC_STATUS);
+	if(hstatus is null)
+		return;
+	IMAGE *img=get_current_image();
+	if(img is null){
+		SetWindowText(hwnd,"");
+		return;
+	}
+	char[80] tmp=0;
+	_snprintf(tmp.ptr,tmp.length,"CURSOR=%i,%i",img.cursor.x,img.cursor.y);
+	if(img.clip.width>0 || img.clip.height>0){
+		_snprintf(tmp.ptr,tmp.length,"%s | clip size=%i,%i",tmp.ptr,img.clip.width,img.clip.height);
+	}
+	if(img.selection_width()>0 || img.selection_height()>0){
+		_snprintf(tmp.ptr,tmp.length,"%s | selection size=%i,%i",tmp.ptr,img.selection_width(),img.selection_height());
+	}
+	tmp[$-1]=0;
+	SetWindowTextA(hstatus,tmp.ptr);
+}
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG){
+	version(M_DEBUG){
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST)
 		print_msg(msg,wparam,lparam,hwnd);
 	}
@@ -712,6 +736,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			init_grippy(hwnd,IDC_GRIPPY);
 			init_image();
 			display_image_size(hwnd);
+			update_status(hwnd);
 			old_image_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,cast(LONG_PTR)&image_proc);
 			old_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,cast(LONG_PTR)&palette_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
@@ -720,6 +745,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
 			SendMessage(GetDlgItem(hwnd,IDC_ROWS),EM_LIMITTEXT,4,0);
 			SendMessage(GetDlgItem(hwnd,IDC_COLS),EM_LIMITTEXT,4,0);
+			SetDlgItemText(hwnd,IDC_STATUS,"asdasd");
 			break;
 		case WM_SIZE:
 			{
@@ -742,6 +768,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					case APP_REFRESH:
 						InvalidateRect(GetDlgItem(hwnd,IDC_IMAGE),NULL,TRUE);
 						display_image_size(hwnd);
+						update_status(hwnd);
 						break;
 					default:
 						break;
@@ -885,7 +912,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(_DEBUG)
+//	version(M_DEBUG)
 	{
 		debug_console(hmaindlg);
 	}
