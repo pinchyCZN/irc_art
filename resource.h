@@ -24,14 +24,12 @@
 #define IDC_GRIPPY                      1011
 #define IDC_FG_CHK                      1012
 #define IDC_BG_CHK                      1013
-#define IDC_EDIT                        1013
 #define IDC_TEXT                        1013
 #define IDC_TEXTCOLOR                   1014
-#define IDC_CHECK2                      1015
 #define IDC_3D                          1015
-#define IDC_TEXT_STYLE                  1016
-#define IDC_EDIT1                       1017
+#define IDC_FONT                        1016
 #define IDC_STATUS                      1017
+#define IDC_SCROLLBAR1                  1018
 #define IDM_SAVE                        40001
 #define IDM_COPYTOCLIP                  40002
 #define IDM_FILEOPEN                    40004
@@ -43,7 +41,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        105
 #define _APS_NEXT_COMMAND_VALUE         40006
-#define _APS_NEXT_CONTROL_VALUE         1018
+#define _APS_NEXT_CONTROL_VALUE         1019
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

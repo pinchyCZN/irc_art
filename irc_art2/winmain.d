@@ -48,20 +48,6 @@ int get_bg_color()
 	else
 		return -1;
 }
-int init_grippy(HWND hparent,int idc)
-{
-	int result=FALSE;
-	HWND hgrippy;
-	LONG style;
-	if(hparent==NULL)
-		return result;
-	hgrippy=GetDlgItem(hparent,idc);
-	if(hgrippy==NULL)
-		return result;
-	style=WS_CHILD|WS_VISIBLE|SBS_SIZEGRIP;
-	result=SetWindowLong(hgrippy,GWL_STYLE,style);
-	return result;
-}
 
 void select_drag(IMAGE *img,int cx,int cy)
 {

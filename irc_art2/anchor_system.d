@@ -166,3 +166,86 @@ int anchor_resize(HWND hparent,ref CONTROL_ANCHOR[] clist)
 	}
 	return 0;
 }
+
+int save_win_rel_position(HWND hparent,HWND hwin,ref WIN_REL_POS relpos)
+{
+	int result=FALSE;
+	relpos.parent.length=WINDOWPLACEMENT.sizeof;
+	if(GetWindowPlacement(hparent,&relpos.parent)){
+		if(relpos.parent.showCmd==SW_SHOWMAXIMIZED)
+			GetWindowRect(hparent,&relpos.parent.rcNormalPosition);
+		relpos.win.length=WINDOWPLACEMENT.sizeof;
+		if(GetWindowPlacement(hwin,&relpos.win)){
+			result=TRUE;
+		}
+	}
+	relpos.initialized=result;
+	return result;
+}
+int restore_win_rel_position(HWND hparent,HWND hwin,ref WIN_REL_POS relpos)
+{
+	//clamp window to nearest monitor
+	if(relpos.initialized){
+		WINDOWPLACEMENT *wp_parent,wp_win;
+		RECT rparent={0};
+		RECT orig_parent={0};
+		wp_parent=&relpos.parent;
+		wp_win=&relpos.win;
+		orig_parent=relpos.parent.rcNormalPosition;
+		if((!(SW_SHOWMAXIMIZED==wp_win.showCmd || SW_SHOWMINIMIZED==wp_win.showCmd)) 
+		   && GetWindowRect(hparent,&rparent)){
+			HMONITOR hmon;
+			RECT rwin;
+			int x,y,cx,cy;
+			x=wp_win.rcNormalPosition.left-orig_parent.left;
+			y=wp_win.rcNormalPosition.top-orig_parent.top;
+			cx=wp_win.rcNormalPosition.right-wp_win.rcNormalPosition.left;
+			cy=wp_win.rcNormalPosition.bottom-wp_win.rcNormalPosition.top;
+			rwin.left=rparent.left+x;
+			rwin.top=rparent.top+y;
+			rwin.right=rwin.left+cx;
+			rwin.bottom=rwin.top+cy;
+			hmon=MonitorFromRect(&rwin,MONITOR_DEFAULTTONEAREST);
+			if(hmon){
+				MONITORINFO mi;
+				mi.cbSize=mi.sizeof;
+				if(GetMonitorInfo(hmon,&mi)){
+					RECT rmon;
+					rmon=mi.rcWork;
+					x=rwin.left;
+					y=rwin.top;
+					if(x<rmon.left)
+						x=rmon.left;
+					if(y<rmon.top)
+						y=rmon.top;
+					if(cx>(rmon.right-rmon.left))
+						cx=rmon.right-rmon.left;
+					if(cy>(rmon.bottom-rmon.top))
+						cy=rmon.bottom-rmon.top;
+					if((x+cx)>rmon.right)
+						x=rmon.right-cx;
+					if((y+cy)>rmon.bottom)
+						y=rmon.bottom-cy;
+					SetWindowPos(hwin,NULL,x,y,cx,cy,SWP_NOZORDER);
+				}
+			}
+
+		   }
+	}
+	return 0;
+}
+
+int init_grippy(HWND hparent,int idc)
+{
+	int result=FALSE;
+	HWND hgrippy;
+	LONG style;
+	if(hparent==NULL)
+		return result;
+	hgrippy=GetDlgItem(hparent,idc);
+	if(hgrippy==NULL)
+		return result;
+	style=WS_CHILD|WS_VISIBLE|SBS_SIZEGRIP;
+	result=SetWindowLong(hgrippy,GWL_STYLE,style);
+	return result;
+}
