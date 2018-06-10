@@ -38,7 +38,7 @@ void print_text(char *str,int is3d,int iscolor)
 	}
 	w=len*8;
 	h=12;
-	if(is3d)
+	if(is3d && len>0)
 		w++;
 	img.clip.cells.length=w*h;
 	img.clip.width=w;
@@ -88,7 +88,12 @@ void print_text(char *str,int is3d,int iscolor)
 	}
 	img.is_modified=true;
 }
-
+void toggle_check_button(HWND hwnd,int idc)
+{
+	int flag=IsDlgButtonChecked(hwnd,idc);
+	(BST_CHECKED==flag)?(flag=BST_UNCHECKED):(flag=BST_CHECKED);
+	CheckDlgButton(hwnd,idc,flag);
+}
 private WNDPROC old_edit_proc=NULL;
 private extern(C)
 BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -122,6 +127,16 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							}
 						}
 						return 0;
+					}
+					break;
+				case '1':
+					if(ctrl){
+						toggle_check_button(GetParent(hwnd),IDC_TEXTCOLOR);
+					}
+					break;
+				case '2':
+					if(ctrl){
+						toggle_check_button(GetParent(hwnd),IDC_3D);
 					}
 					break;
 				default:
@@ -180,9 +195,11 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					break;
 				case IDC_3D:
 					flag_is3d=BST_CHECKED==IsDlgButtonChecked(hwnd,IDC_3D);
+					SendMessage(hwnd,WM_APP,0,0);
 					break;
 				case IDC_TEXTCOLOR:
 					flag_color=BST_CHECKED==IsDlgButtonChecked(hwnd,IDC_TEXTCOLOR);
+					SendMessage(hwnd,WM_APP,0,0);
 					break;
 				case IDCANCEL:
 					{
@@ -199,6 +216,15 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					break;
 				default:
 					break;
+			}
+			break;
+		case WM_APP:
+			switch(wparam){
+			case 0:
+				PostMessage(hwnd,WM_COMMAND,MAKEWPARAM(IDC_TEXT,EN_CHANGE),cast(LPARAM)GetDlgItem(hwnd,IDC_TEXT));
+				break;
+			default:
+				break;
 			}
 			break;
 		default:
