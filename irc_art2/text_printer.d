@@ -114,7 +114,10 @@ void print_text(char *str,int is3d,int iscolor,int font_type)
 		}
 		int i,j;
 		for(i=0;i<font.height;i++){
-			int k=(a*font.height)+i;
+			int ascii_offset=a-font.ascii_start;
+			if(ascii_offset<0)
+				continue;
+			int k=(ascii_offset*font.height)+i;
 			if(k>=font.data.length)
 				continue;
 			int x=font.data[k];
@@ -155,7 +158,7 @@ void combo_select_next(HWND hcombo,int dir)
 		if(index>=count)
 			index=0;
 		else if(index<0)
-		index=count-1;
+			index=count-1;
 		SendMessage(hcombo,CB_SETCURSEL,index,0);
 	}
 	SendMessage(GetParent(hcombo),WM_APP,0,0);
@@ -244,6 +247,9 @@ void init_font_combo(HWND hwnd,int idc,int flag)
 	FONT_LIST[] font_list=[
 		{"VGA 737",VGA737},
 		{"FONT8x8",FONT8X8},
+		{"FONT7x9",FONT7X9},
+		{"FONT7x9B",FONT7X9B},
+		{"FONT7x9C",FONT7X9C},
 	];
 	foreach(ref f;font_list){
 		wstring tmp;
