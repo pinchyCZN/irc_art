@@ -226,7 +226,7 @@ nothrow:
 };
 IMAGE[] images;
 int current_image=0;
-ubyte *vgargb;
+ubyte[] vgargb;
 
 IMAGE *get_current_image()
 {
@@ -237,12 +237,11 @@ IMAGE *get_current_image()
 void create_vga_font()
 {
 	import fonts;
-	import unicode_font;
 	const int vga_count=vga737_bin.length;
 	const int total=vga737_bin.length+block_elements.length;
-	if(vgargb is null)
-		vgargb=cast(ubyte*)calloc(8*12*total,1);
-	if(vgargb){
+	if(vgargb.length==0)
+		vgargb.length=8*12*total;
+	if(vgargb.length>0){
 		int i,j,k;
 		for(k=0;k<total;k++){
 			for(i=0;i<12;i++){
@@ -288,9 +287,10 @@ int image_click(IMAGE *img,int x,int y)
 
 int draw_cells(HDC hdc,RECT *rect,ref CELL[] cells,int row_width,int cell_width,int cell_height,
 			   int xoffset,int yoffset,
-			   const ubyte *font)
+			   const ubyte[] font)
 {
 	import palette;
+	import fonts;
 	int result;
 	struct TMP{
 		BITMAPINFOHEADER bmiHeader;
@@ -319,14 +319,15 @@ int draw_cells(HDC hdc,RECT *rect,ref CELL[] cells,int row_width,int cell_width,
 		if(y>=rect.bottom)
 			continue;
 		CELL *cell=&cells[i];
-		ushort a;
 		bmi.colors[0]=get_rgb_color(cell.bg);
 		bmi.colors[1]=get_rgb_color(cell.fg);
-		a=cell.val&0xFF;
+		int font_offset=get_font_offset(cell.val);
+		if(font_offset>=font.length)
+			continue;
 		SetDIBitsToDevice(hdc,x,y,cell_width,cell_height,
 						  0,0, //src xy
 						  0,cell_height, //startscan,scanlines
-						  font+a*8*12,
+						  font.ptr+font_offset,
 						  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
 	}
 	return result;
@@ -342,7 +343,7 @@ int paint_image(HWND hwnd,HDC hdc)
 		DWORD[2] colors;
 	}
 	TMP bmi;
-	const ubyte *font=vgargb;
+	const ubyte[] font=vgargb;
 	IMAGE *img;
 
 	if(font is null)

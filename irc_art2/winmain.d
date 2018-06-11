@@ -13,6 +13,7 @@ import palette;
 import anchor_system;
 import file_image;
 import text_printer;
+import shortcut;
 import debug_print;
 
 HINSTANCE ghinstance=NULL;
@@ -348,6 +349,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					}
 					x=img.cursor.x;
 					y=img.cursor.y;
+					code=0x2580+rand()%10;
 					img.set_char(code,x,y);
 					img.set_fg(fg_color,x,y);
 					img.move_cursor(1,0);
@@ -422,7 +424,12 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				oy=img.cursor.y;
 				switch(vkey){
 					case VK_INSERT:
-						{
+						if(ctrl){
+							SC_DLG_PARAM scp;
+							scp.hparent=GetParent(hwnd);
+							scp.hinstance=ghinstance;
+							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hwnd,&dlg_keyshort,cast(LPARAM)&scp);
+						}else{
 							TEXT_PARAMS tp;
 							tp.hparent=hmaindlg;
 							tp.img=get_current_image();
@@ -904,7 +911,6 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 	{
 		debug_console(hmaindlg);
 	}
-
 	while (1){
 		int ret;
 		MSG msg;

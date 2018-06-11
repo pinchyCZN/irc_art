@@ -11,8 +11,12 @@ const IDD_MAINDLG = 101;
 const IDR_MENU1 = 102;
 //C     #define IDD_TEXT                        104
 const IDD_INSTALL_DIALOG = 103;
-//C     #define IDC_IMAGE                       1000
+//C     #define IDD_KEYS                        105
 const IDD_TEXT = 104;
+//C     #define IDD_ENTER_SHORTCUT              106
+const IDD_KEYS = 105;
+//C     #define IDC_IMAGE                       1000
+const IDD_ENTER_SHORTCUT = 106;
 //C     #define IDC_ROWS                        1001
 const IDC_IMAGE = 1000;
 //C     #define IDC_COLS                        1002
@@ -57,10 +61,12 @@ const IDC_TEXTCOLOR = 1014;
 const IDC_3D = 1015;
 //C     #define IDC_STATUS                      1017
 const IDC_FONT = 1016;
-//C     #define IDC_SCROLLBAR1                  1018
+//C     #define IDC_KEYLIST                     1020
 const IDC_STATUS = 1017;
+//C     #define IDC_KEY                         1021
+const IDC_KEYLIST = 1020;
 //C     #define IDM_SAVE                        40001
-const IDC_SCROLLBAR1 = 1018;
+const IDC_KEY = 1021;
 //C     #define IDM_COPYTOCLIP                  40002
 const IDM_SAVE = 40001;
 //C     #define IDM_FILEOPEN                    40004
@@ -73,9 +79,9 @@ const IDM_SAVEAS = 40005;
 // 
 //C     #ifdef APSTUDIO_INVOKED
 //C     #ifndef APSTUDIO_READONLY_SYMBOLS
-//C     #define _APS_NEXT_RESOURCE_VALUE        105
+//C     #define _APS_NEXT_RESOURCE_VALUE        107
 //C     #define _APS_NEXT_COMMAND_VALUE         40006
-//C     #define _APS_NEXT_CONTROL_VALUE         1019
+//C     #define _APS_NEXT_CONTROL_VALUE         1022
 //C     #define _APS_NEXT_SYMED_VALUE           101
 //C     #endif
 //C     #endif

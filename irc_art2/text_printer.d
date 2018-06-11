@@ -31,10 +31,55 @@ int flag_is3d=0;
 int flag_color=0;
 int flag_font=VGA737;
 
-void set_clip_size(char *str,FONT font,IMAGE *img,int is3d)
+void calc_clip_size_ascii(char *str,FONT font,IMAGE *img)
 {
-	if(img is null)
-		return;
+	int index=0;
+	int count=0;
+	int width,height,w,h;
+	int cell_height;
+	if(font.mdata.length>=2)
+		cell_height=font.mdata[1];
+	while(1){
+		ubyte a=cast(ubyte)str[index++];
+		if(0==a){
+			if(count>0){
+				if(w>width)
+					width=w;
+				height+=h;
+			}
+			break;
+		}else if('\n'==a || '\r'==a){
+			if(count>0){
+				if(w>width)
+					width=w;
+				w=0;
+				height+=h;
+				count=0;
+			}
+		}else{
+			int aindex=a-font.ascii_start;
+			if(aindex<0)
+				continue;
+			aindex*=2;
+			if(aindex>=font.mdata.length)
+				continue;
+			int size,_w,_h;
+			_w=font.mdata[aindex];
+			_h=font.mdata[aindex+1];
+			w+=_w;
+			h=_h;
+			size=_w*_h;
+			if(0==size)
+				continue;
+			count++;
+		}
+	}
+	img.clip.cells.length=width*height;
+	img.clip.width=width;
+	img.clip.height=height;
+}
+void calc_clip_size_bitmap(char *str,FONT font,IMAGE *img,int is3d)
+{
 	int w,h,index=0,count=0;
 	while(1){
 		char a=str[index++];
@@ -64,33 +109,19 @@ void set_clip_size(char *str,FONT font,IMAGE *img,int is3d)
 	img.clip.width=w;
 	img.clip.height=h;
 }
-void print_text(char *str,int is3d,int iscolor,int font_type)
+void set_clip_size(char *str,FONT font,IMAGE *img,int is3d)
 {
-	IMAGE *img=text_params.img;
 	if(img is null)
 		return;
-	int len=strlen(str);
-	int fg,bg,tg;
-	FONT font=get_font(font_type);
-	fg=text_params.fg;
-	bg=text_params.bg;
-	tg=fg+1;
-	if(fg<0)
-		fg=0;
-	if(bg<0){
-		bg=1;
-		tg=15;
+	if((font.width==0 || font.height==0) && font.mdata.length>0){
+		calc_clip_size_ascii(str,font,img);
+	}else{
+		calc_clip_size_bitmap(str,font,img,is3d);
 	}
-	set_clip_size(str,font,img,is3d);
-	img.clip.x=img.cursor.x;
-	img.clip.y=img.cursor.y;
-	CLIP clip=img.clip;
-	foreach(ref c;clip.cells){
-		c.fg=fg;
-		c.bg=bg;
-		c.val=0;
-	}
-
+}
+void print_text_bitmap(char *str,FONT font,int fg,int bg,int tg,int is3d,int iscolor,
+					   ref CLIP clip)
+{
 	int xpos=0,ypos=0;
 	int index=0;
 	while(1){
@@ -138,6 +169,103 @@ void print_text(char *str,int is3d,int iscolor,int font_type)
 		}
 		xpos+=font.width;
 	}
+}
+int get_ascii_offset(int a,FONT font)
+{
+	int offset=0;
+	int pos=a;
+	if((pos*2+1)>=font.mdata.length)
+		return offset;
+	int i;
+	for(i=0;i<font.mdata.length/2;i++){
+		int w,h;
+		if(i==pos)
+			break;
+		w=font.mdata[i*2];
+		h=font.mdata[i*2+1];
+		offset+=w*h;
+	}
+	return offset;
+}
+void print_text_ascii(char *str,FONT font,int fg,int bg,int tg,int iscolor,
+					   ref CLIP clip)
+{
+	int xpos=0,ypos=0;
+	int index=0;
+	int w,h;
+	if(font.mdata.length>=2)
+		h=font.mdata[1];
+	while(1){
+		ubyte a=str[index++];
+		if(0==a)
+			break;
+		if('\r'==a)
+			continue;
+		if('\n'==a){
+			xpos=0;
+			ypos+=h;
+			continue;
+		}
+		if(iscolor){
+			fg=rand()%16;
+			if(fg<=1)
+				fg+=2;
+			tg=fg+1;
+			if(tg>15)
+				tg=2;
+		}
+		int aindex=a-font.ascii_start;
+		if(aindex<0 || (aindex*2+1)>=font.mdata.length)
+			continue;
+		w=font.mdata[aindex*2];
+		int i,j;
+		int soffset=get_ascii_offset(aindex,font);
+		for(i=0;i<h;i++){
+			for(j=0;j<w;j++){
+				int src_index=soffset+j+i*w;
+				int dst_index=xpos+j+ypos*clip.width+i*clip.width;
+				if(src_index>=font.data.length)
+					break;
+				if(dst_index>=clip.cells.length)
+					break;
+				clip.cells[dst_index].fg=fg;
+				clip.cells[dst_index].bg=bg;
+				clip.cells[dst_index].val=font.data[src_index];
+			}
+		}
+		xpos+=w;
+	}
+}
+void print_text(char *str,int is3d,int iscolor,int font_type)
+{
+	IMAGE *img=text_params.img;
+	if(img is null)
+		return;
+	int len=strlen(str);
+	int fg,bg,tg;
+	FONT font=get_font(font_type);
+	fg=text_params.fg;
+	bg=text_params.bg;
+	tg=fg+1;
+	if(fg<0)
+		fg=0;
+	if(bg<0){
+		bg=1;
+		tg=15;
+	}
+	set_clip_size(str,font,img,is3d);
+	img.clip.x=img.cursor.x;
+	img.clip.y=img.cursor.y;
+	foreach(ref c;img.clip.cells){
+		c.fg=fg;
+		c.bg=bg;
+		c.val=0;
+	}
+	if(font.width>0 && font.height>0)
+		print_text_bitmap(str,font,fg,bg,tg,is3d,iscolor,img.clip);
+	else
+		print_text_ascii(str,font,fg,bg,tg,iscolor,img.clip);
+
 	img.is_modified=true;
 }
 void toggle_check_button(HWND hwnd,int idc)
@@ -252,6 +380,7 @@ void init_font_combo(HWND hwnd,int idc,int flag)
 		{"FONT7x9",FONT7X9},
 		{"FONT7x9B",FONT7X9B},
 		{"FONT7x9C",FONT7X9C},
+		{"ASCI3D",ASCII3D},
 	];
 	foreach(ref f;font_list){
 		wstring tmp;
