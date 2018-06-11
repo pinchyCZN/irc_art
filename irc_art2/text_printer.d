@@ -167,7 +167,9 @@ private WNDPROC old_edit_proc=NULL;
 private extern(C)
 BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	print_msg(msg,wparam,lparam,hwnd);
+	version(M_DEBUG){
+		print_msg(msg,wparam,lparam,hwnd);
+	}
 	switch(msg){
 		case WM_GETDLGCODE:
 			int key=wparam;

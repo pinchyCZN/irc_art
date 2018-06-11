@@ -628,8 +628,10 @@ WNDPROC old_edit_proc=NULL;
 extern(Windows)
 BOOL edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	printf("==");
-	print_msg(msg,wparam,lparam,hwnd);
+	version(M_DEBUG){
+		printf("==");
+		print_msg(msg,wparam,lparam,hwnd);
+	}
 	switch(msg){
 		case WM_GETDLGCODE:
 			if(VK_RETURN==wparam)
@@ -898,7 +900,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-//	version(M_DEBUG)
+	version(M_DEBUG)
 	{
 		debug_console(hmaindlg);
 	}
