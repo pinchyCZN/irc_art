@@ -4,6 +4,7 @@ import core.sys.windows.windows;
 import core.sys.windows.commctrl;
 import core.stdc.stdlib;
 import core.stdc.string;
+import core.stdc.stdio;
 import anchor_system;
 import resource;
 
@@ -21,36 +22,67 @@ WIN_REL_POS keyshort_win_pos;
 
 void init_lview(HWND hparent,HWND hlview)
 {
-	wstring[] cols=["char","key"];
+	try{
+	wstring[] cols=["val","char","key"];
 	int i;
 	for(i=0;i<cols.length;i++){
 		LV_COLUMN col;
 		col.mask = LVCF_WIDTH|LVCF_TEXT;
 		col.cx = 100;
 		col.pszText = cast(WCHAR*)cols[i].ptr;
-		try{
 			ListView_InsertColumn(hlview,i,&col);
-		}
-		catch(Exception e){
-		}
 	}
+	ListView_SetExtendedListViewStyle(hlview,LVS_EX_FULLROWSELECT);
+	}
+	catch(Exception e){
+	}
+
+}
+void print_hex(WCHAR[] str,int val)
+{
+	if(str.length>2){
+		str[0]='0';
+		str[1]='x';
+	}
+	int index=2;
+	int div=12;
+	while(1){
+		if(index>=str.length)
+			break;
+		ubyte x=(val>>div)&0xF;
+		ubyte add='0';
+		if(x>9)
+			add='A'-10;
+		x+=add;
+		str[index++]=x;
+		div-=4;
+		if(div<0)
+			break;
+	}
+	if(index<str.length)
+		str[index++]=0;
+	str[$-1]=0;
 }
 void fill_list(HWND hlview)
 {
 	try{
 	ListView_DeleteAllItems(hlview);
-	int i;
-	for(i=0x2580;i<0x259F;i++){
-		WCHAR[2] str;
+	int i,index=0;
+	for(i=0x2580;i<=0x259F;i++){
+		WCHAR[20] str;
 		LV_ITEM lvitem;
-		str[0]=cast(WCHAR)i;
-		str[1]=0;
 		lvitem.mask = LVIF_TEXT;
 		lvitem.pszText = str.ptr;
-		lvitem.iItem = i;
+		lvitem.iItem = index;
 		lvitem.iSubItem = 0;
 		lvitem.lParam = 0;
+		print_hex(str,i);
 		ListView_InsertItem(hlview,&lvitem);
+		str[0]=cast(WCHAR)i;
+		str[1]=0;
+		ListView_SetItemText(hlview,index,1,str.ptr);
+		index++;
+
 	}
 	}catch(Exception s){
 	}
