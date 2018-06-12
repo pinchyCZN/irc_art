@@ -370,18 +370,6 @@ void init_font_combo(HWND hwnd,int idc,int flag)
 	HWND hcombo=GetDlgItem(hwnd,idc);
 	if(hcombo is null)
 		return;
-	struct FONT_LIST{
-		wstring name;
-		int id;
-	}
-	FONT_LIST[] font_list=[
-		{"VGA 737",VGA737},
-		{"FONT8x8",FONT8X8},
-		{"FONT7x9",FONT7X9},
-		{"FONT7x9B",FONT7X9B},
-		{"FONT7x9C",FONT7X9C},
-		{"ASCI3D",ASCII3D},
-	];
 	foreach(ref f;font_list){
 		wstring tmp;
 		int index;

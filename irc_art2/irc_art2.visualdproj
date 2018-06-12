@@ -54,7 +54,7 @@
   <ccTransOpt>1</ccTransOpt>
   <addDepImp>0</addDepImp>
   <program>$(DMDInstallDir)windows\bin\dmd.exe</program>
-  <imppath />
+  <imppath>.\fonts</imppath>
   <fileImppath>..\..\irc_art;..\irc_art2</fileImppath>
   <outdir>$(PlatformName)\$(ConfigurationName)</outdir>
   <objdir>$(OutDir)</objdir>
@@ -429,6 +429,28 @@
   <filesToClean>*.obj;*.cmd;*.build;*.json;*.dep;*.tlog</filesToClean>
  </Config>
  <Folder name="irc_art2">
+  <Folder name="fonts">
+   <File path="fonts\ascii3d.d" />
+   <File path="fonts\Bulbhead.d" />
+   <File path="fonts\Chunky.d" />
+   <File path="fonts\Cricket.d" />
+   <File path="fonts\Dancing_Font.d" />
+   <File path="fonts\Doom.d" />
+   <File path="fonts\Dr_Pepper.d" />
+   <File path="fonts\Fire_Font_k.d" />
+   <File path="fonts\Fun_Faces.d" />
+   <File path="fonts\Ghoulish.d" />
+   <File path="fonts\Graffiti.d" />
+   <File path="fonts\Isometric1.d" />
+   <File path="fonts\Isometric2.d" />
+   <File path="fonts\Isometric3.d" />
+   <File path="fonts\Isometric4.d" />
+   <File path="fonts\Ivrit.d" />
+   <File path="fonts\Larry_3D.d" />
+   <File path="fonts\Modular.d" />
+   <File path="fonts\Small.d" />
+   <File path="fonts\Swamp_Land.d" />
+  </Folder>
   <File path="anchor_system.d" />
   <File path="debug_print.d" />
   <File path="file_image.d" />
