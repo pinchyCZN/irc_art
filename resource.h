@@ -33,6 +33,10 @@
 #define IDC_STATUS                      1017
 #define IDC_KEYLIST                     1020
 #define IDC_KEY                         1021
+#define IDC_ADD                         1022
+#define IDC_EDIT                        1023
+#define IDC_BUTTON3                     1024
+#define IDC_DELETE                      1024
 #define IDM_SAVE                        40001
 #define IDM_COPYTOCLIP                  40002
 #define IDM_FILEOPEN                    40004
@@ -44,7 +48,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        107
 #define _APS_NEXT_COMMAND_VALUE         40006
-#define _APS_NEXT_CONTROL_VALUE         1022
+#define _APS_NEXT_CONTROL_VALUE         1025
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

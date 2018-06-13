@@ -914,7 +914,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(M_DEBUG)
+	version(_DEBUG)
 	{
 		debug_console(hmaindlg);
 	}

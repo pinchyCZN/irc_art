@@ -11,7 +11,9 @@ import resource;
 nothrow:
 
 CONTROL_ANCHOR[] keyshort_anchor=[
-	{IDOK,ANCHOR_LEFT|ANCHOR_BOTTOM},
+	{IDC_ADD,ANCHOR_LEFT|ANCHOR_BOTTOM},
+	{IDC_EDIT,ANCHOR_LEFT|ANCHOR_BOTTOM},
+	{IDC_DELETE,ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDCANCEL,ANCHOR_RIGHT|ANCHOR_BOTTOM},
 	{IDC_KEYLIST,ANCHOR_RIGHT|ANCHOR_LEFT|ANCHOR_BOTTOM|ANCHOR_TOP},
 	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
@@ -84,6 +86,12 @@ void fill_list(HWND hlview)
 		index++;
 
 	}
+	/*
+	HFONT hf=cast(HFONT)SendMessage(hlview,WM_GETFONT,0,0);
+	LOGFONT lf;
+	GetObject(hf,lf.sizeof,cast(void*)&lf);
+	printf("%S",lf.lfFaceName.ptr);
+	*/
 	}catch(Exception s){
 	}
 }
