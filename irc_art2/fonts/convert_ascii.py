@@ -33,12 +33,23 @@ def get_ext(path):
     
 def get_flist(path):
     flist=[];
-    for root,dirs,files in os.walk(path):
-        for filename in files:
-            ext=get_ext(filename);
+    tmp=os.listdir(path)
+    for s in tmp:
+        s=os.path.join(path,s)
+        if(os.path.isfile(s)):
+            ext=get_ext(s);
             ext=ext.lower();
             if("flf" in ext):
-                flist.append(os.path.join(root, filename))
+                flist.append(s)
+    return flist;
+    for root,dirs,files in os.walk(path):
+        for filename in files:
+            tmp=os.path.join(root, filename)
+            if(os.path.isfile(tmp)):
+                ext=get_ext(filename);
+                ext=ext.lower();
+                if("flf" in ext):
+                    flist.append(os.path.join(root, filename))
     return flist;
 
 def sanitize_str(s):
@@ -72,28 +83,29 @@ def process_fig(fname):
     data=[];
     mdata=[];
     for t in lines:
-        line="";
-        if('#' in t):
-            has_pound=True;
         t=sanitize_str(t);
-        tmp="";
-        delim="@";
-        if(len(t)>=1):
-            tmp=t[-1:]
-            if('#' in tmp):
-                delim='#';
-        if(delim in tmp):
-            for c in t:
-                if(c==delim):
-                    break;
-                line+=c;
-            count+=1;
-        if((delim+delim) in t):
-            if(count>1):
-                y=count;
-                x=len(line);
-                mdata.append((x,y));
-                count=0;
+        if(len(t)==0):
+            continue;
+        delim=t[-1:]
+        if(not('#'==delim) or ('@'==delim)):
+            continue;
+        count+=1;
+        end=False;
+        if(len(t)>2):
+            tmp=t[-2:];
+            if((delim+delim) in tmp):
+                t=t[:-2];
+                end=True;
+        if(len(t)>1):
+            tmp=t[-1:];
+            if(delim in tmp):
+                t=t[:-1]
+        line=t;
+        if(count>1) and end:
+            y=count;
+            x=len(line);
+            mdata.append((x,y));
+            count=0;
         if(len(line)>0):
             data.append(line);
             #print(line);
@@ -154,7 +166,7 @@ def get_mdata(flist):
         print(up+",");
 
 
-flist=get_flist("c:\\DEV\\MSVC_projects\\irc_art\\irc_art2\\fonts");
+flist=get_flist("b:\\");
 
 for s in flist:
     print("processing: "+s);

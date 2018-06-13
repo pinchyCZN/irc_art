@@ -20,6 +20,7 @@ string Dancing_Font_data=
 	r" "~
 	r" "~
 	r" "~
+	r"#"~
 	r" "~
 	r" "~
 	r" "~

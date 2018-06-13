@@ -430,6 +430,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							scp.hinstance=ghinstance;
 							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hwnd,&dlg_keyshort,cast(LPARAM)&scp);
 						}else{
+							static HWND htextdlg;
 							TEXT_PARAMS tp;
 							tp.hparent=hmaindlg;
 							tp.img=get_current_image();
@@ -438,6 +439,12 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							if(tp.img is null)
 								break;
 							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)&tp);
+							/*
+							if(htextdlg is null)
+								htextdlg=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hmaindlg,&dlg_text,cast(LPARAM)&tp);
+							if(htextdlg !is null)
+								SetWindowPos(htextdlg,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW);
+							*/
 						}
 						break;
 					case VK_HOME:
