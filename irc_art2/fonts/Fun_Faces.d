@@ -20,6 +20,7 @@ string Fun_Faces_data=
 	r" "~
 	r" "~
 	r" "~
+	r"#"~
 	r" "~
 	r" "~
 	r" "~
