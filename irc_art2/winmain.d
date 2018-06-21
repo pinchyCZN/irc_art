@@ -349,7 +349,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					}
 					x=img.cursor.x;
 					y=img.cursor.y;
-					code=0x2580+rand()%10;
+					//code=0x2580+rand()%10;
 					img.set_char(code,x,y);
 					img.set_fg(fg_color,x,y);
 					img.move_cursor(1,0);
@@ -438,13 +438,13 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							tp.bg=get_bg_color();
 							if(tp.img is null)
 								break;
-							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)&tp);
-							/*
+							//DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)&tp);
+							
 							if(htextdlg is null)
 								htextdlg=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hmaindlg,&dlg_text,cast(LPARAM)&tp);
 							if(htextdlg !is null)
 								SetWindowPos(htextdlg,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW);
-							*/
+							
 						}
 						break;
 					case VK_HOME:
@@ -926,7 +926,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 			break;
 		}else{
 			if(!IsDialogMessage(hmaindlg,&msg)){
-				//TranslateMessage(&msg);
+				TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
 		}
