@@ -31,6 +31,17 @@ int flag_is3d=0;
 int flag_color=0;
 int flag_font=VGA737;
 
+int get_rand_color()
+{
+	static int[14] list=[4,2,3,5,6,7,8,11,9,15,10,12,13,14];
+	static int last_color=0;
+	int c=list[last_color];
+	last_color++;
+	if(last_color>=list.length)
+		last_color=0;
+	return c;
+}
+
 void calc_clip_size_ascii(char *str,FONT font,IMAGE *img)
 {
 	int index=0;
@@ -136,10 +147,8 @@ void print_text_bitmap(char *str,FONT font,int fg,int bg,int tg,int is3d,int isc
 			continue;
 		}
 		if(iscolor){
-			fg=rand()%16;
-			if(fg<=1)
-				fg+=2;
-			tg=fg+1;
+			fg=get_rand_color();
+			tg=fg+2;
 			if(tg>15)
 				tg=2;
 		}
@@ -207,10 +216,8 @@ void print_text_ascii(char *str,FONT font,int fg,int bg,int tg,int iscolor,
 			continue;
 		}
 		if(iscolor){
-			fg=rand()%16;
-			if(fg<=1)
-				fg+=2;
-			tg=fg+1;
+			fg=get_rand_color();
+			tg=fg+2;
 			if(tg>15)
 				tg=2;
 		}
@@ -295,7 +302,7 @@ private WNDPROC old_edit_proc=NULL;
 private extern(C)
 BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(M_DEBUG){
+	version(_DEBUG){
 		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
@@ -311,12 +318,27 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_COPY:
 			return 0;
 			break;
+		case WM_CHAR:
+			if(wparam==VK_RETURN){
+				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
+				int shift=GetKeyState(VK_SHIFT)&0x8000;
+				if(!(ctrl || shift)){
+					return 0;
+				}
+			}
+			break;
 		case WM_KEYDOWN:
 			{
 				int key=wparam;
 				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
 				int shift=GetKeyState(VK_SHIFT)&0x8000;
 				switch(key){
+				case VK_RETURN:
+					if(!(ctrl || shift)){
+						PostMessage(GetParent(hwnd),WM_COMMAND,MAKEWPARAM(IDOK,0),0);
+						return 0;
+					}
+					break;
 				case VK_INSERT:
 					{
 						int dir=1;
@@ -404,6 +426,9 @@ void save_text(HWND hedit,ref WCHAR[] str)
 extern (Windows)
 BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
+	version(_DEBUG){
+	//	print_msg(msg,wparam,lparam,hwnd);
+	}
 	switch(msg){
 		case WM_INITDIALOG:
 			{
@@ -436,6 +461,9 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			break;
 		case WM_SIZE:
 			anchor_resize(hwnd,text_edit_anchor);
+			break;
+		case WM_ACTIVATE:
+			SetFocus(GetDlgItem(hwnd,IDC_TEXT));
 			break;
 		case WM_COMMAND:
 			int idc=LOWORD(wparam);
