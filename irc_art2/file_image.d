@@ -113,15 +113,13 @@ int copy_str_clipboard(const char *str)
 	}
 	return result;
 }
-int image_to_clipboard(IMAGE *img)
+string image_to_str(IMAGE *img)
 {
-	int result=FALSE;
-	string tmp;
+	string result;
 	if(img is null)
 		return result;
-	tmp=img.get_text();
-	tmp~='\0';
-	result=copy_str_clipboard(tmp.ptr);
+	result=img.get_text();
+	result~='\0';
 	return result;
 }
 

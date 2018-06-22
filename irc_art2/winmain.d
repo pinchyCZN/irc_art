@@ -377,9 +377,11 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 										if(tmp.length>0){
 											tmp~='\0';
 											copy_str_clipboard(tmp.ptr);
+											print_str_len(GetParent(hwnd),tmp.ptr);
 										}
 									}else{
-										image_to_clipboard(img);
+										string tmp=image_to_str(img);
+										print_str_len(GetParent(hwnd),tmp.ptr);
 									}
 								}
 							}else if(0x16==code){ //ctrl-v
@@ -799,7 +801,8 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							IMAGE *img=get_current_image();
 							if(img is null)
 								break;
-							image_to_clipboard(img);
+							string tmp=image_to_str(img);
+							print_str_len(hwnd,tmp.ptr);
 						}
 						break;
 					case IDCANCEL:
