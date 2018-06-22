@@ -18,6 +18,7 @@ import debug_print;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
+HWND htextdlg=NULL;
 enum{
 	APP_SETFOCUS=0,
 	APP_REFRESH=1
@@ -63,24 +64,22 @@ void select_drag(IMAGE *img,int cx,int cy)
 		img.selection.top=cy;
 	}
 }
+
 int process_mouse(int flags,short x,short y)
 {
 	if(flags&MK_CONTROL){
-		if(flags&MK_LBUTTON){
+		if(flags&(MK_LBUTTON|MK_RBUTTON)){
 			IMAGE *img=get_current_image();
+			int ox,oy;
+			ox=img.cursor.x;
+			oy=img.cursor.y;
 			if(image_click(img,x,y)){
 				int fg,bg;
 				fg=get_fg_color();
 				bg=get_bg_color();
-				if(fg>=0)
-					img.set_fg(fg,img.cursor.x,img.cursor.y);
-				if(bg>=0)
-					img.set_bg(bg,img.cursor.x,img.cursor.y);
-			}
-		}else if(flags&MK_RBUTTON){
-			IMAGE *img=get_current_image();
-			if(image_click(img,x,y)){
-				img.set_bg(bg_color,img.cursor.x,img.cursor.y);
+				if(flags&MK_RBUTTON)
+					fg=-1;
+				draw_line(img,ox,oy,img.cursor.x,img.cursor.y,fg,bg);
 			}
 		}
 	}else if(flags&MK_SHIFT){
@@ -312,6 +311,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				if(img !is null){
 					image_click(img,x,y);
 					memset(&img.selection,0,img.selection.sizeof);
+					if(IsWindowVisible(htextdlg)){
+						img.clip.x=img.cursor.x;
+						img.clip.y=img.cursor.y;
+					}
 				}
 				SetFocus(hwnd);
 				return 0;
@@ -372,16 +375,15 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 									selection_to_clip(img);
 									memset(&img.selection,0,img.selection.sizeof);
 								}else{
-									if(img.clip.width>0 && img.clip.height>0){
-										string tmp=get_text_cells(img.clip.cells,img.clip.width,img.clip.height);
-										if(tmp.length>0){
+									string tmp;
+									if(img.clip.width>0 && img.clip.height>0)
+										tmp=img.get_clip_text();
+									else
+										tmp=img.get_text();
+									if(tmp.length>0){
 											tmp~='\0';
 											copy_str_clipboard(tmp.ptr);
 											print_str_len(GetParent(hwnd),tmp.ptr);
-										}
-									}else{
-										string tmp=image_to_str(img);
-										print_str_len(GetParent(hwnd),tmp.ptr);
 									}
 								}
 							}else if(0x16==code){ //ctrl-v
@@ -432,7 +434,6 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							scp.hinstance=ghinstance;
 							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hwnd,&dlg_keyshort,cast(LPARAM)&scp);
 						}else{
-							static HWND htextdlg;
 							TEXT_PARAMS tp;
 							tp.hparent=hmaindlg;
 							tp.img=get_current_image();
@@ -440,13 +441,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							tp.bg=get_bg_color();
 							if(tp.img is null)
 								break;
-							//DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hwnd,&dlg_text,cast(LPARAM)&tp);
-							
 							if(htextdlg is null)
 								htextdlg=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hmaindlg,&dlg_text,cast(LPARAM)&tp);
 							if(htextdlg !is null)
 								SetWindowPos(htextdlg,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW);
-							
 						}
 						break;
 					case VK_HOME:
@@ -456,6 +454,8 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							}else{
 								img.move_cursor(-img.cursor.x,0);
 							}
+							img.clip.x=img.cursor.x;
+							img.clip.y=img.cursor.y;
 						}
 						break;
 					case VK_END:
@@ -801,8 +801,11 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							IMAGE *img=get_current_image();
 							if(img is null)
 								break;
-							string tmp=image_to_str(img);
-							print_str_len(hwnd,tmp.ptr);
+							string tmp=img.get_text();
+							if(tmp.length>0){
+								tmp~='\0';
+								print_str_len(hwnd,tmp.ptr);
+							}
 						}
 						break;
 					case IDCANCEL:
@@ -917,7 +920,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(_DEBUG)
+	version(M_DEBUG)
 	{
 		debug_console(hmaindlg);
 	}

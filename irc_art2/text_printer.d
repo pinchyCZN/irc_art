@@ -302,7 +302,7 @@ private WNDPROC old_edit_proc=NULL;
 private extern(C)
 BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG){
+	version(M_DEBUG){
 		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
@@ -333,6 +333,9 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
 				int shift=GetKeyState(VK_SHIFT)&0x8000;
 				switch(key){
+				case VK_ESCAPE:
+					EndDialog(GetParent(hwnd),0);
+					break;
 				case VK_RETURN:
 					if(!(ctrl || shift)){
 						PostMessage(GetParent(hwnd),WM_COMMAND,MAKEWPARAM(IDOK,0),0);
@@ -355,7 +358,7 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					if(ctrl){
 						IMAGE *img=get_current_image();
 						if(img !is null){
-							string tmp=get_text_cells(img.clip.cells,img.clip.width,img.clip.height);
+							string tmp=img.get_clip_text();
 							if(tmp.length>0){
 								import file_image;
 								tmp~='\0';
@@ -426,8 +429,8 @@ void save_text(HWND hedit,ref WCHAR[] str)
 extern (Windows)
 BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG){
-	//	print_msg(msg,wparam,lparam,hwnd);
+	version(M_DEBUG){
+		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
 		case WM_INITDIALOG:

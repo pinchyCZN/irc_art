@@ -113,15 +113,6 @@ int copy_str_clipboard(const char *str)
 	}
 	return result;
 }
-string image_to_str(IMAGE *img)
-{
-	string result;
-	if(img is null)
-		return result;
-	result=img.get_text();
-	result~='\0';
-	return result;
-}
 
 int fetch_next_char(ubyte *str,int *index,int *val)
 {
