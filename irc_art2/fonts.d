@@ -1092,3 +1092,12 @@ int get_font_offset(ushort val)
 	}
 	return result;
 }
+
+import core.sys.windows.windows;
+HFONT get_dejavu_font()
+{
+	static HFONT hf=NULL;
+	if(hf is null)
+		hf=cast(HFONT)CreateFont(-15,0,0,0,FW_NORMAL,0,0,0,0,0,0,0,0,"DejaVu Sans Mono");
+	return hf;
+}

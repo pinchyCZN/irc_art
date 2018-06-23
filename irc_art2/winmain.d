@@ -10,6 +10,7 @@ import core.stdc.string;
 import resource;
 import image;
 import palette;
+import fonts;
 import anchor_system;
 import file_image;
 import text_printer;
@@ -748,8 +749,12 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
 			old_ext_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_EXT_COLORS),GWL_WNDPROC,cast(LONG_PTR)&ext_palette_proc);
 			SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
-			SendMessage(GetDlgItem(hwnd,IDC_ROWS),EM_LIMITTEXT,4,0);
-			SendMessage(GetDlgItem(hwnd,IDC_COLS),EM_LIMITTEXT,4,0);
+			SendDlgItemMessage(hwnd,IDC_ROWS,EM_LIMITTEXT,4,0);
+			SendDlgItemMessage(hwnd,IDC_COLS,EM_LIMITTEXT,4,0);
+			SendDlgItemMessage(hwnd,IDC_CHAR,EM_LIMITTEXT,1,0);
+			HFONT hf=get_dejavu_font();
+			if(hf)
+				SendDlgItemMessage(hwnd,IDC_CHAR,WM_SETFONT,cast(WPARAM)hf,TRUE);
 			break;
 		case WM_MOVE:
 			{

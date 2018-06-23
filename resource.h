@@ -8,6 +8,7 @@
 #define IDD_TEXT                        104
 #define IDD_KEYS                        105
 #define IDD_ENTER_SHORTCUT              106
+#define IDD_SHORTCUT                    107
 #define IDC_IMAGE                       1000
 #define IDC_ROWS                        1001
 #define IDC_COLS                        1002
@@ -35,8 +36,9 @@
 #define IDC_KEY                         1021
 #define IDC_ADD                         1022
 #define IDC_EDIT                        1023
-#define IDC_BUTTON3                     1024
 #define IDC_DELETE                      1024
+#define IDC_CHAR                        1025
+#define IDC_EDIT1                       1026
 #define IDM_SAVE                        40001
 #define IDM_COPYTOCLIP                  40002
 #define IDM_FILEOPEN                    40004
@@ -46,9 +48,9 @@
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
-#define _APS_NEXT_RESOURCE_VALUE        107
+#define _APS_NEXT_RESOURCE_VALUE        108
 #define _APS_NEXT_COMMAND_VALUE         40006
-#define _APS_NEXT_CONTROL_VALUE         1025
+#define _APS_NEXT_CONTROL_VALUE         1027
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif
