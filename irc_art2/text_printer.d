@@ -529,13 +529,11 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							img.clear_clip();
 							InvalidateRect(GetDlgItem(text_params.hparent,IDC_IMAGE),NULL,TRUE);
 						}
-						save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 						save_text(GetDlgItem(hwnd,IDC_TEXT),last_text);
 						ShowWindow(hwnd,SW_HIDE);
 					}
 					break;
 				case IDOK:
-					save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 					save_text(GetDlgItem(hwnd,IDC_TEXT),last_text);
 					ShowWindow(hwnd,SW_HIDE);
 					break;
