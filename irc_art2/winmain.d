@@ -18,7 +18,6 @@ import debug_print;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
-HWND htextdlg=NULL;
 enum{
 	APP_SETFOCUS=0,
 	APP_REFRESH=1
@@ -443,8 +442,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								break;
 							if(htextdlg is null)
 								htextdlg=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hmaindlg,&dlg_text,cast(LPARAM)&tp);
-							if(htextdlg !is null)
-								SetWindowPos(htextdlg,HWND_TOP,0,0,0,0,SWP_NOMOVE|SWP_NOSIZE|SWP_SHOWWINDOW);
+							if(htextdlg !is null){
+								if(ShowWindow(htextdlg,SW_SHOW))
+									SetFocus(htextdlg);
+							}
 						}
 						break;
 					case VK_HOME:
@@ -749,7 +750,13 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
 			SendMessage(GetDlgItem(hwnd,IDC_ROWS),EM_LIMITTEXT,4,0);
 			SendMessage(GetDlgItem(hwnd,IDC_COLS),EM_LIMITTEXT,4,0);
-			SetDlgItemText(hwnd,IDC_STATUS,"asdasd");
+			break;
+		case WM_MOVE:
+			{
+				if(IsWindowVisible(htextdlg)){
+					PostMessage(htextdlg,WM_APP,1,0);
+				}
+			}
 			break;
 		case WM_SIZE:
 			{
@@ -920,7 +927,7 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		return 0;
 	}
 	ShowWindow(hmaindlg,SW_SHOW);
-	version(M_DEBUG)
+	version(_DEBUG)
 	{
 		debug_console(hmaindlg);
 	}

@@ -20,6 +20,7 @@ CONTROL_ANCHOR[] text_edit_anchor=[
 ];
 WIN_REL_POS text_win_pos;
 WCHAR[] last_text;
+HWND htextdlg=NULL;
 
 struct TEXT_PARAMS{
 	HWND hparent;
@@ -334,7 +335,7 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				int shift=GetKeyState(VK_SHIFT)&0x8000;
 				switch(key){
 				case VK_ESCAPE:
-					EndDialog(GetParent(hwnd),0);
+					ShowWindow(GetParent(hwnd),SW_HIDE);
 					break;
 				case VK_RETURN:
 					if(!(ctrl || shift)){
@@ -429,7 +430,7 @@ void save_text(HWND hedit,ref WCHAR[] str)
 extern (Windows)
 BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(M_DEBUG){
+	version(_DEBUG){
 		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
@@ -455,6 +456,7 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				init_grippy(hwnd,IDC_GRIPPY);
 				anchor_init(hwnd,text_edit_anchor);
 				restore_win_rel_position(text_params.hparent,hwnd,text_win_pos);
+				save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 				if(last_text.length>0){
 					last_text[$-1]=0;
 					SetWindowText(htext,last_text.ptr);
@@ -462,8 +464,18 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				}
 			}
 			break;
+		case WM_SHOWWINDOW:
+			if(wparam)
+				restore_win_rel_position(text_params.hparent,hwnd,text_win_pos);
+			else
+				save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
+			break;
+		case WM_MOVE:
+			save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
+			break;
 		case WM_SIZE:
 			anchor_resize(hwnd,text_edit_anchor);
+			save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 			break;
 		case WM_ACTIVATE:
 			SetFocus(GetDlgItem(hwnd,IDC_TEXT));
@@ -519,13 +531,13 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						}
 						save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 						save_text(GetDlgItem(hwnd,IDC_TEXT),last_text);
-						EndDialog(hwnd,0);
+						ShowWindow(hwnd,SW_HIDE);
 					}
 					break;
 				case IDOK:
 					save_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 					save_text(GetDlgItem(hwnd,IDC_TEXT),last_text);
-					EndDialog(hwnd,0);
+					ShowWindow(hwnd,SW_HIDE);
 					break;
 				default:
 					break;
@@ -535,6 +547,9 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			switch(wparam){
 			case 0:
 				PostMessage(hwnd,WM_COMMAND,MAKEWPARAM(IDC_TEXT,EN_CHANGE),cast(LPARAM)GetDlgItem(hwnd,IDC_TEXT));
+				break;
+			case 1:
+				restore_win_rel_position(text_params.hparent,hwnd,text_win_pos);
 				break;
 			default:
 				break;

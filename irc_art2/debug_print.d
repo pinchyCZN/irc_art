@@ -494,8 +494,14 @@ int get_key_str(uint key,char *str)
 void print_msg(int msg,int wparam,int lparam,HANDLE hwnd)
 {
 	int i;
-	DWORD time;
-	time=GetTickCount();
+	static DWORD last;
+	DWORD delta,tick;
+	tick=GetTickCount();
+	delta=tick-last;
+	if(delta>700){
+		printf("---\n");
+	}
+	last=tick;
 	for(i=0;i<wm_names.length;i++){
 		if(wm_names[i].val==msg){
 			printf("%-20s wparam=%08X lparam=%08X %08X x=%3i y=%3i\n",wm_names[i].name.ptr,wparam,lparam,hwnd,LOWORD(lparam),HIWORD(lparam));
