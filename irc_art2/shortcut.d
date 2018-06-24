@@ -23,18 +23,18 @@ CONTROL_ANCHOR[] keyshort_anchor=[
 ];
 
 WIN_REL_POS keyshort_win_pos;
-
+wstring[] DLG_COLS=["val","char","key"];
+enum{COL_VAL=0,COL_CHAR=1,COL_KEY=2};
 
 void init_lview(HWND hparent,HWND hlview)
 {
 	try{
-	wstring[] cols=["val","char","key"];
 	int i;
-	for(i=0;i<cols.length;i++){
+	for(i=0;i<DLG_COLS.length;i++){
 		LV_COLUMN col;
 		col.mask = LVCF_WIDTH|LVCF_TEXT;
 		col.cx = 100;
-		col.pszText = cast(WCHAR*)cols[i].ptr;
+		col.pszText = cast(WCHAR*)DLG_COLS[i].ptr;
 			ListView_InsertColumn(hlview,i,&col);
 	}
 	ListView_SetExtendedListViewStyle(hlview,LVS_EX_FULLROWSELECT);
@@ -125,7 +125,101 @@ struct SC_DLG_PARAM{
 	HWND hparent;
 }
 SC_DLG_PARAM sc_param;
-
+int get_string_width(HWND hwnd,wchar *str)
+{
+	if(hwnd && str){
+		SIZE size={0};
+		HDC hdc;
+		hdc=GetDC(hwnd);
+		if(hdc){
+			import core.stdc.wchar_;
+			HFONT hfont;
+			int len=wcslen(str);
+			hfont=cast(HFONT)SendMessage(hwnd,WM_GETFONT,0,0);
+			if(hfont){
+				HGDIOBJ hold;
+				hold=cast(HGDIOBJ)SelectObject(hdc,hfont);
+				GetTextExtentPoint32W(hdc,str,len,&size);
+				if(hold)
+					SelectObject(hdc,hold);
+			}
+			else{
+				GetTextExtentPoint32W(hdc,str,len,&size);
+			}
+			ReleaseDC(hwnd,hdc);
+			return size.cx;
+		}
+	}
+	return 0;
+}
+void update_col_width(HWND hlview,int col)
+{
+	int i,max=100;
+	try{
+	int count=ListView_GetItemCount(hlview);
+	for(i=0;i<count;i++){
+		WCHAR[80] str;
+		str[0]=0;
+		get_item_text(hlview,str,i,col);
+		if(str[0]!=0){
+			int x;
+			x=get_string_width(hlview,str.ptr);
+			if(x>max)
+				max=x;
+		}
+	}
+	ListView_SetColumnWidth(hlview,col,max+15);
+	}catch(Exception e){
+	}
+}
+void show_key_dlg(HWND hwnd,HWND hlview,int edit)
+{
+	int item=get_focused_item(hlview);
+	if(item<0 && edit)
+		return;
+	SHORTCUT_PARAM scp;
+	scp.edit=edit;
+	if(get_shortcut_info(hlview,item,&scp)){
+		int r=DialogBoxParam(sc_param.hinstance,MAKEINTRESOURCE(IDD_SHORTCUT),hwnd,&dlg_enter_key,cast(LPARAM)&scp);
+		if(r){
+			wstring str=get_sc_key_text(scp.sc);
+			str~='\0';
+			try{
+				ListView_SetItemText(hlview,item,COL_KEY,cast(wchar*)str.ptr);
+				update_col_width(hlview,COL_KEY);
+			}catch(Exception e){
+			}
+		}
+	}
+}
+void delete_selection(HWND hlview)
+{
+	int i;
+	int count,total;
+	try{
+	count=ListView_GetItemCount(hlview);
+	total=0;
+	for(i=0;i<count;i++){
+		int state=ListView_GetItemState(hlview,i,LVIS_SELECTED);
+		if(state==LVIS_SELECTED)
+			total++;
+	}
+	if(total>0){
+		int r=IDOK;
+		if(total>1)
+			r=MessageBox(hlview,"Ok to removed selected shortcuts?","Warning",MB_OKCANCEL);
+		if(r==IDOK){
+			for(i=0;i<count;i++){
+				int state=ListView_GetItemState(hlview,i,LVIS_SELECTED);
+				if(state==LVIS_SELECTED){
+					ListView_SetItemText(hlview,i,COL_KEY,cast(wchar*)"");
+				}
+			}
+		}
+	}
+	}catch(Exception e){
+	}
+}
 extern (Windows)
 BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -136,14 +230,16 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			memset(&sc_param,0,sc_param.sizeof);
 		else
 			sc_param=*sc;
-		init_lview(hwnd,GetDlgItem(hwnd,IDC_KEYLIST));
-		fill_list(GetDlgItem(hwnd,IDC_KEYLIST));
+		HWND hlview=GetDlgItem(hwnd,IDC_KEYLIST);
+		init_lview(hwnd,hlview);
+		fill_list(hlview);
 		init_grippy(hwnd,IDC_GRIPPY);
 		anchor_init(hwnd,keyshort_anchor);
 		restore_win_rel_position(sc_param.hparent,hwnd,keyshort_win_pos);
 		HFONT hf=get_dejavu_font();
 		if(hf)
 			SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
+		SetFocus(hlview);
 		break;
 	case WM_SIZE:
 		anchor_resize(hwnd,keyshort_anchor);
@@ -154,15 +250,25 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			LPNMLISTVIEW nlv=cast(LPNMLISTVIEW)lparam;
 			if(nlv is null)
 				break;
+			HWND hlview=nlv.hdr.hwndFrom;
 			switch(nlv.hdr.code){
-			case NM_DBLCLK:
-				HWND hlview=nlv.hdr.hwndFrom;
-				int item=get_focused_item(hlview);
-				if(item<0)
+			case LVN_KEYDOWN:
+				LV_KEYDOWN *key=cast(LV_KEYDOWN*)lparam;
+				if(!(key.wVKey==VK_F2
+					 || key.wVKey==VK_INSERT
+					 || key.wVKey==VK_DELETE))
 					break;
-				SHORTCUT_PARAM scp;
-				if(get_shortcut_info(hlview,item,&scp))
-					DialogBoxParam(sc_param.hinstance,MAKEINTRESOURCE(IDD_SHORTCUT),hwnd,&dlg_enter_key,cast(LPARAM)&scp);
+				if(key.wVKey==VK_DELETE){
+					delete_selection(hlview);
+					break;
+				}
+				int edit=false;
+				if(key.wVKey==VK_F2)
+					edit=true;
+				show_key_dlg(hwnd,hlview,edit);
+				break;
+			case NM_DBLCLK:
+				show_key_dlg(hwnd,hlview,false);
 				break;
 			default:
 				break;
@@ -364,6 +470,7 @@ struct SHORTCUT{
 struct SHORTCUT_PARAM{
 	SHORTCUT sc;
 	WCHAR letter;
+	int edit;
 }
 int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 {
@@ -373,7 +480,7 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 	get_item_text(hlview,tmp,item,1);
 	scp.letter=tmp[0];
 	memset(tmp.ptr,0,tmp.sizeof);
-	get_item_text(hlview,tmp,item,2);
+	get_item_text(hlview,tmp,item,COL_KEY);
 	try{
 	if(StrStrW(tmp.ptr,"ctrl"))
 		scp.sc.ctrl=1;
@@ -386,8 +493,11 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 	int i,index=0;
 	for(i=0;i<tmp.length;i++){
 		WCHAR a=tmp[i];
-		if(a=='+')
+		if(a=='+'){
 			index=i+1;
+			if(tmp[index]==0)
+				index--;
+		}
 	}
 	WCHAR *keyname=tmp.ptr+index;
 	scp.sc.vkey=0;
@@ -409,16 +519,15 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 				return 10+a-'A';
 		}
 		if(keyname[0]=='0' && keyname[1]=='x'){
-			scp.sc.vkey=(get_hex_val(keyname[2])<<8)||get_hex_val(keyname[3]);
+			scp.sc.key_char=(get_hex_val(keyname[2])<<8)||get_hex_val(keyname[3]);
 		}else{
-			scp.sc.vkey=keyname[0];
+			scp.sc.key_char=keyname[0];
 		}
 	}
 	result=TRUE;
 	return result;
 }
-
-void print_key(SHORTCUT sc,HWND hwnd)
+wstring get_sc_key_text(SHORTCUT sc)
 {
 	wstring tmp;
 	if(sc.ctrl)
@@ -427,9 +536,7 @@ void print_key(SHORTCUT sc,HWND hwnd)
 		tmp~="shift+";
 	if(sc.alt)
 		tmp~="alt+";
-	if(sc.key_char)
-		tmp~=sc.key_char;
-	else if(sc.vkey){
+	if(sc.vkey){
 		int found=false;
 		foreach(c;keylist){
 			if(c.val==sc.vkey){
@@ -440,11 +547,27 @@ void print_key(SHORTCUT sc,HWND hwnd)
 		}
 		if(!found)
 			tmp~=sc.vkey;
+	}else if(sc.key_char){
+		int found=false;
+		if(!(sc.key_char>=0x21 && sc.key_char<=0x7E)){
+			foreach(c;keylist){
+				if(c.val==sc.key_char){
+					tmp~=c.name;
+					found=true;
+					break;
+				}
+			}
+		}
+		if(!found)
+			tmp~=sc.key_char;
 	}
-	if(tmp.length>0){
-		tmp~='\0';
-		SetWindowTextW(hwnd,tmp.ptr);
-	}
+	return tmp;
+}
+void print_key(SHORTCUT sc,HWND hwnd)
+{
+	wstring tmp=get_sc_key_text(sc);
+	tmp~='\0';
+	SetWindowTextW(hwnd,tmp.ptr);
 }
 
 private WNDPROC old_edit_proc=NULL;
@@ -453,7 +576,10 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static SHORTCUT sc;
 	version(_DEBUG){
-		print_msg(msg,wparam,lparam,hwnd);
+		if(!(msg==WM_NCHITTEST 
+			 || msg==WM_MOUSEFIRST 
+			 || msg==WM_SETCURSOR))
+			print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
 	case WM_GETDLGCODE:
@@ -467,6 +593,7 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	case WM_CONTEXTMENU:
 		return 0;
 		break;
+	case WM_SYSKEYDOWN:
 	case WM_KEYDOWN:
 		{
 			int key=wparam;
@@ -476,24 +603,28 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				sc.shift=1;
 			else if(key==VK_MENU)
 				sc.alt=1;
-			else if(key==VK_SPACE)
-				break;
-			else
-				sc.vkey=key;
+			else{
+				if(key==VK_DELETE || key==VK_BACK){
+					if(sc.vkey==VK_DELETE || sc.vkey==VK_BACK){
+						sc.ctrl=0;
+						sc.shift=0;
+						sc.alt=0;
+						sc.vkey=0;
+					}else{
+						sc.vkey=key;
+					}
+				}else if(key==VK_RETURN){
+					if(sc.vkey==0 && sc.key_char==0)
+						sc.vkey=key;
+					else{
+						SendMessage(GetParent(hwnd),WM_COMMAND,MAKEWPARAM(IDOK,0),0);
+						return 0;
+					}
+				}else{
+					sc.vkey=key;
+				}
+			}
 			sc.key_char=0;
-			print_key(sc,hwnd);
-		}
-		return 0;
-		break;
-	case WM_KEYUP:
-		{
-			int key=wparam;
-			if(key==VK_CONTROL)
-				sc.ctrl=0;
-			else if(key==VK_SHIFT)
-				sc.shift=0;
-			else if(key==VK_MENU)
-				sc.alt=0;
 			print_key(sc,hwnd);
 		}
 		return 0;
@@ -505,9 +636,14 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			   || key==' '
 			   || key==VK_RETURN
 			   || key==VK_BACK
-			   || key==VK_TAB)
-				break;
-			sc.key_char=wparam;
+			   || key==VK_TAB){
+				print_key(sc,hwnd);
+				return 0;
+			}
+			if(key>=0x21 && key<=0x7E){
+				sc.vkey=0;
+				sc.key_char=key;
+			}
 			print_key(sc,hwnd);
 		}
 		return 0;
@@ -543,6 +679,13 @@ BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				HFONT hf=get_dejavu_font();
 				if(hf)
 					SendDlgItemMessage(hwnd,IDC_EDIT,WM_SETFONT,cast(WPARAM)hf,TRUE);
+				if(scp.edit){
+					wstring str=get_sc_key_text(scp.sc);
+					str~='\0';
+					SetWindowText(hedit,str.ptr);
+					str="Edit shortcut for:"w~scp.letter~'\0';
+					SetWindowText(hwnd,str.ptr);
+				}
 			}
 		}
 		break;
