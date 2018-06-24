@@ -55,7 +55,7 @@
   <addDepImp>0</addDepImp>
   <program>$(DMDInstallDir)windows\bin\dmd.exe</program>
   <imppath>.\fonts</imppath>
-  <fileImppath>..\..\irc_art;..\irc_art2</fileImppath>
+  <fileImppath>.\fonts</fileImppath>
   <outdir>$(PlatformName)\$(ConfigurationName)</outdir>
   <objdir>$(OutDir)</objdir>
   <objname />

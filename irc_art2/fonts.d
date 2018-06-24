@@ -1097,7 +1097,14 @@ import core.sys.windows.windows;
 HFONT get_dejavu_font()
 {
 	static HFONT hf=NULL;
-	if(hf is null)
+	if(hf is null){
+		string font_data=import("DejaVuSansMono.ttf");
+		static HANDLE htmp;
+		if(htmp is null){
+			DWORD num;
+			htmp=AddFontMemResourceEx(cast(void*)font_data.ptr,font_data.length,null,&num);
+		}
 		hf=cast(HFONT)CreateFont(-15,0,0,0,FW_NORMAL,0,0,0,0,0,0,0,0,"DejaVu Sans Mono");
+	}
 	return hf;
 }
