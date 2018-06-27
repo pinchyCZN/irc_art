@@ -75,10 +75,14 @@ const IDC_ADD = 1022;
 const IDC_EDIT = 1023;
 //C     #define IDC_CHAR                        1025
 const IDC_DELETE = 1024;
-//C     #define IDC_EDIT1                       1026
+//C     #define IDC_FILL_CHK                    1027
 const IDC_CHAR = 1025;
+//C     #define IDC_EDIT1                       1028
+const IDC_FILL_CHK = 1027;
+//C     #define IDC_HEXVAL                      1028
+const IDC_EDIT1 = 1028;
 //C     #define IDM_SAVE                        40001
-const IDC_EDIT1 = 1026;
+const IDC_HEXVAL = 1028;
 //C     #define IDM_COPYTOCLIP                  40002
 const IDM_SAVE = 40001;
 //C     #define IDM_FILEOPEN                    40004
@@ -93,7 +97,7 @@ const IDM_SAVEAS = 40005;
 //C     #ifndef APSTUDIO_READONLY_SYMBOLS
 //C     #define _APS_NEXT_RESOURCE_VALUE        108
 //C     #define _APS_NEXT_COMMAND_VALUE         40006
-//C     #define _APS_NEXT_CONTROL_VALUE         1027
+//C     #define _APS_NEXT_CONTROL_VALUE         1029
 //C     #define _APS_NEXT_SYMED_VALUE           101
 //C     #endif
 //C     #endif

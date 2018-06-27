@@ -50,6 +50,16 @@ int get_bg_color()
 	else
 		return -1;
 }
+int get_fill_char()
+{
+	if(IsDlgButtonChecked(hmaindlg,IDC_FILL_CHK)){
+		WCHAR[4] tmp;
+		GetDlgItemText(hmaindlg,IDC_CHAR,tmp.ptr,2);
+		return tmp[0];
+	}
+	else
+		return 0;
+}
 
 void select_drag(IMAGE *img,int cx,int cy)
 {
@@ -296,7 +306,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	
 	switch(msg){
 		case WM_KILLFOCUS:
+			set_focus_flag(hwnd,0);
+			return 0;
 		case WM_SETFOCUS:
+			set_focus_flag(hwnd,1);
 			return 0;
 			break;
 		case WM_GETDLGCODE:
@@ -400,7 +413,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								if(img.cursor_in_clip()){
 									flip_clip(img);
 								}else
-									do_fill(img,get_fg_color(),get_bg_color());
+									do_fill(img,get_fg_color(),get_bg_color(),get_fill_char());
 							}else if(12==code){ //ctrl-r
 
 							}
@@ -509,6 +522,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					case '2':
 						if(ctrl)
 							toggle_check(hmaindlg,IDC_BG_CHK);
+						break;
+					case '3':
+						if(ctrl)
+							toggle_check(hmaindlg,IDC_FILL_CHK);
 						break;
 					default:
 						break;
@@ -843,6 +860,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						break;
 					case IDC_FG_CHK:
 					case IDC_BG_CHK:
+					case IDC_FILL_CHK:
 						PostMessage(hwnd,WM_APP,APP_SETFOCUS,0);
 						break;
 					default:
@@ -893,6 +911,17 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			}
 			break;
 		case WM_PAINT:
+			{
+				HDC hdc=GetDC(hwnd);
+				if(hdc){
+					RECT rect;
+					GetWindowRect(GetDlgItem(hwnd,IDC_IMAGE),&rect);
+					MapWindowPoints(HWND_DESKTOP,hwnd,cast(POINT*)&rect,2);
+					paint_image_active(hdc,rect,image_focus_flag);
+					ReleaseDC(hwnd,hdc);
+					return 0;
+				}
+			}
 			break;
 		case WM_CLOSE:
 			DestroyWindow(hwnd);

@@ -38,7 +38,9 @@
 #define IDC_EDIT                        1023
 #define IDC_DELETE                      1024
 #define IDC_CHAR                        1025
-#define IDC_EDIT1                       1026
+#define IDC_FILL_CHK                    1027
+#define IDC_EDIT1                       1028
+#define IDC_HEXVAL                      1028
 #define IDM_SAVE                        40001
 #define IDM_COPYTOCLIP                  40002
 #define IDM_FILEOPEN                    40004
@@ -50,7 +52,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        108
 #define _APS_NEXT_COMMAND_VALUE         40006
-#define _APS_NEXT_CONTROL_VALUE         1027
+#define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

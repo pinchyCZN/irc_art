@@ -342,17 +342,48 @@ int draw_cells(HDC hdc,RECT *clip,ref CELL[] cells,int row_width,int cell_width,
 	}
 	return result;
 }
+
+int image_focus_flag=0;
+void get_active_rect(RECT *rect)
+{
+	rect.bottom=rect.top;
+	rect.top-=3;
+	rect.right=rect.left+100;
+	return;
+}
+void paint_image_active(HDC hdc,RECT rect,int active)
+{
+	static HBRUSH hactive;
+	if(hactive is null)
+		hactive=CreateSolidBrush(RGB(0xFF,0,0));
+	if(hactive){
+		HRGN hrgn;
+		RECT tmp=rect;
+		get_active_rect(&tmp);
+		hrgn=CreateRectRgnIndirect(&tmp);
+		if(hrgn){
+			HBRUSH hbr=hactive;
+			if(!active)
+				hbr=GetSysColorBrush(COLOR_BTNFACE);
+			FillRgn(hdc,hrgn,hbr);
+			DeleteObject(hrgn);
+		}
+	}
+}
+void set_focus_flag(HWND hwnd,int active)
+{
+	RECT rect;
+	HWND hparent=GetParent(hwnd);
+	GetWindowRect(hwnd,&rect);
+	MapWindowPoints(HWND_DESKTOP,hparent,cast(POINT*)&rect,2);
+	get_active_rect(&rect);
+	RedrawWindow(hparent,&rect,NULL,RDW_INVALIDATE);
+	image_focus_flag=active;
+}
 int paint_image(HWND hwnd,HDC hdc)
 {
-	import palette;
 	int result=FALSE;
-	int i,cell_count;
 	int xoffset,yoffset;
-	struct TMP{
-		BITMAPINFOHEADER bmiHeader;
-		DWORD[2] colors;
-	}
-	TMP bmi;
 	const ubyte[] font=vgargb;
 	IMAGE *img;
 
@@ -365,17 +396,8 @@ int paint_image(HWND hwnd,HDC hdc)
 	RECT clip;
 	GetClientRect(hwnd,&clip);
 
-	bmi.bmiHeader.biBitCount=8;
-	bmi.bmiHeader.biWidth=img.cell_width;
-	bmi.bmiHeader.biHeight=img.cell_height;
-	bmi.bmiHeader.biPlanes=1;
-	bmi.bmiHeader.biSizeImage=img.cell_width*img.cell_height;
-	bmi.bmiHeader.biXPelsPerMeter=0;
-	bmi.bmiHeader.biYPelsPerMeter=0;
-	bmi.bmiHeader.biSize=BITMAPINFOHEADER.sizeof;
 	xoffset=0;
 	yoffset=0;
-
 
 	draw_cells(hdc,&clip,img.cells,img.width,img.cell_width,img.cell_height,
 				   xoffset,yoffset,font);
@@ -391,27 +413,6 @@ int paint_image(HWND hwnd,HDC hdc)
 		draw_focus_rect(img,hdc,rect);
 	}
 
-/*
-	for(i=0;i<img.cells.length;i++){
-		ushort a;
-		int x,y;
-		CELL *cell=&img.cells[i];
-		bmi.colors[0]=get_rgb_color(cell.bg);
-		bmi.colors[1]=get_rgb_color(cell.fg);
-		a=cell.val&0xFF;
-		x=i%img.width;
-		x*=img.cell_width;
-		x+=xoffset;
-		y=i/img.width;
-		y*=img.cell_height;
-		y+=yoffset;
-		SetDIBitsToDevice(hdc,x,y,img.cell_width,img.cell_height,
-						  0,0, //src xy
-						  0,img.cell_height, //startscan,scanlines
-						  font+a*img.cell_width*img.cell_height,
-						  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
-	}
-*/
 	RECT rect;
 	rect.left=img.cursor.x;
 	rect.right=rect.left+1;
@@ -419,12 +420,11 @@ int paint_image(HWND hwnd,HDC hdc)
 	rect.bottom=rect.top+1;
 	draw_focus_rect(img,hdc,rect);
 
+
 	if(img.selection_width>0 || img.selection_height>0){
 		rect=img.selection;
 		draw_focus_rect(img,hdc,rect);
 	}
-	return 0;
-
 	return result;
 }
 void draw_focus_rect(IMAGE *img,HDC hdc,RECT rect)
@@ -558,7 +558,7 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 	img.is_modified=true;
 }
 
-void do_fill(IMAGE *img,int fg,int bg)
+void do_fill(IMAGE *img,int fg,int bg,int fill_char)
 {
 	if(img is null)
 		return;
@@ -578,6 +578,8 @@ void do_fill(IMAGE *img,int fg,int bg)
 					img.set_fg(fg,x,y);
 				if(bg>=0)
 					img.set_bg(bg,x,y);
+				if(fill_char!=0)
+					img.set_char(fill_char,x,y);
 			}
 		}
 	}

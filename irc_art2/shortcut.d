@@ -268,7 +268,7 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				show_key_dlg(hwnd,hlview,edit);
 				break;
 			case NM_DBLCLK:
-				show_key_dlg(hwnd,hlview,false);
+				show_key_dlg(hwnd,hlview,true);
 				break;
 			default:
 				break;
@@ -686,6 +686,9 @@ BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					str="Edit shortcut for:"w~scp.letter~'\0';
 					SetWindowText(hwnd,str.ptr);
 				}
+				WCHAR[20] tmp;
+				print_hex(tmp,scp.letter);
+				SetDlgItemText(hwnd,IDC_HEXVAL,tmp.ptr);
 			}
 		}
 		break;
