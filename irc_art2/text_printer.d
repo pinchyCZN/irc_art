@@ -25,9 +25,12 @@ HWND htextdlg=NULL;
 struct TEXT_PARAMS{
 	HWND hparent;
 	IMAGE *img;
-	int fg,bg;
+	nothrow:
+	int function() fg;
+	int function() bg;
+	int function() fill_char;
 }
-TEXT_PARAMS text_params={NULL,null,-1,-1};
+TEXT_PARAMS text_params={NULL,null,null,null};
 int flag_is3d=0;
 int flag_color=0;
 int flag_font=VGA737;
@@ -252,8 +255,8 @@ void print_text(char *str,int is3d,int iscolor,int font_type)
 	int len=strlen(str);
 	int fg,bg,tg;
 	FONT font=get_font(font_type);
-	fg=text_params.fg;
-	bg=text_params.bg;
+	fg=text_params.fg();
+	bg=text_params.bg();
 	tg=fg+1;
 	if(fg<0)
 		fg=0;
@@ -336,6 +339,9 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				switch(key){
 				case VK_ESCAPE:
 					ShowWindow(GetParent(hwnd),SW_HIDE);
+					break;
+				case VK_F5:
+					PostMessage(GetParent(hwnd),WM_APP,0,0);
 					break;
 				case VK_RETURN:
 					if(!(ctrl || shift)){
@@ -438,8 +444,9 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			{
 				TEXT_PARAMS *tp=cast(TEXT_PARAMS*)lparam;
 				if(tp is null){
-					text_params.fg=-1;
-					text_params.bg=-1;
+					text_params.fg=null;
+					text_params.bg=null;
+					text_params.fill_char=null;
 					text_params.hparent=NULL;
 					text_params.img=null;
 				}else{

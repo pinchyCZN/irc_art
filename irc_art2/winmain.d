@@ -450,8 +450,9 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							TEXT_PARAMS tp;
 							tp.hparent=hmaindlg;
 							tp.img=get_current_image();
-							tp.fg=get_fg_color();
-							tp.bg=get_bg_color();
+							tp.fg=&get_fg_color;
+							tp.bg=&get_bg_color;
+							tp.fill_char=&get_fill_char;
 							if(tp.img is null)
 								break;
 							if(htextdlg is null)
