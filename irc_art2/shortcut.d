@@ -575,7 +575,7 @@ private extern(C)
 BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static SHORTCUT sc;
-	version(_DEBUG){
+	version(M_DEBUG){
 		if(!(msg==WM_NCHITTEST 
 			 || msg==WM_MOUSEFIRST 
 			 || msg==WM_SETCURSOR))

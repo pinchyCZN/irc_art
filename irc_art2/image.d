@@ -156,6 +156,18 @@ nothrow:
 		cells[index].bg=val;
 		is_modified=true;
 	}
+	int get_fg(int x,int y){
+		if(!is_valid_pos(x,y))
+			return -1;
+		int index=x+y*width;
+		return cells[index].fg;
+	}
+	int get_bg(int x,int y){
+		if(!is_valid_pos(x,y))
+			return -1;
+		int index=x+y*width;
+		return cells[index].bg;
+	}
 	void move_cursor(int x,int y){
 		cursor.x+=x;
 		cursor.y+=y;
@@ -439,9 +451,17 @@ void draw_focus_rect(IMAGE *img,HDC hdc,RECT rect)
 	int select=false;
 	enum{TOP,BOTTOM,LEFT,RIGHT}
 	void pat_fill(int i,int j,int side){
-		if(img.is_valid_pos(i,j)){
-			int index=i+j*img.width;
-			if(img.cells[index].bg==14){
+		int tx,ty;
+		tx=i;
+		ty=j;
+		if(side==RIGHT)
+			tx--;
+		else if(side==BOTTOM)
+			ty--;
+		if(img.is_valid_pos(tx,ty)){
+			int index=tx+ty*img.width;
+			int c=img.cells[index].bg;
+			if(c==14 || c==93 || c==94 || c==95 || c==96 || c==97){
 				static HBRUSH hbr;
 				if(hbr is null)
 					hbr=CreateSolidBrush(RGB(0xFF,0,0));

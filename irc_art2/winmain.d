@@ -179,6 +179,7 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 	case VK_DOWN:
 		move_clip(0,1);
 		break;
+	case 0x16://ctrl+v
 	case VK_RETURN:
 		{
 			int x,y;
@@ -199,6 +200,7 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 			img.clip.cells.length=0;
 			img.clip.width=0;
 			img.clip.height=0;
+			result=true;
 		}
 		break;
 	default:
@@ -297,7 +299,7 @@ WNDPROC old_image_proc=NULL;
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(M_DEBUG) {
+	version(_DEBUG) {
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
@@ -318,13 +320,14 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_LBUTTONDOWN:
 			{
 				int x,y;
+				int flag=wparam;
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
 				IMAGE *img=get_current_image();
 				if(img !is null){
 					image_click(img,x,y);
 					memset(&img.selection,0,img.selection.sizeof);
-					if(IsWindowVisible(htextdlg)){
+					if(!(flag&MK_CONTROL)){
 						img.clip.x=img.cursor.x;
 						img.clip.y=img.cursor.y;
 					}
@@ -400,9 +403,11 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 									}
 								}
 							}else if(0x16==code){ //ctrl-v
-								import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
-								img.is_modified=false;
-								PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
+								if(!handle_clip_key(img,code,ctrl,shift)){
+									import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
+									img.is_modified=false;
+									PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
+								}
 							}else if(1==code){ //ctrl-a
 								img.selection.left=0;
 								img.selection.top=0;
@@ -737,7 +742,9 @@ void update_status(HWND hwnd)
 		return;
 	}
 	char[80] tmp=0;
-	_snprintf(tmp.ptr,tmp.length,"CURSOR=%i,%i",img.cursor.x,img.cursor.y);
+	_snprintf(tmp.ptr,tmp.length,"CURSOR=%02i,%02i  FG=%02i BG=%02i",img.cursor.x,img.cursor.y,
+																	img.get_fg(img.cursor.x,img.cursor.y),
+																	img.get_bg(img.cursor.x,img.cursor.y));
 	if(img.clip.width>0 || img.clip.height>0){
 		_snprintf(tmp.ptr,tmp.length,"%s | clip size=%i,%i",tmp.ptr,img.clip.width,img.clip.height);
 	}

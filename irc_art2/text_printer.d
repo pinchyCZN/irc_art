@@ -436,7 +436,7 @@ void save_text(HWND hedit,ref WCHAR[] str)
 extern (Windows)
 BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG){
+	version(M_DEBUG){
 		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
