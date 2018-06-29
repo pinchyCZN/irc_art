@@ -503,18 +503,18 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 		int i;
 		dx=abs(dx);
 		for(i=0;i<dx;i++){
-			if(fg>0)
+			if(fg>=0)
 				img.set_fg(fg,minx+i,miny);
-			if(bg>0)
+			if(bg>=0)
 				img.set_bg(bg,minx+i,miny);
 		}
 	}else if(0==dx){
 		int i;
 		dy=abs(dy);
 		for(i=0;i<=dy;i++){
-			if(fg>0)
+			if(fg>=0)
 				img.set_fg(fg,minx,miny+i);
-			if(bg>0)
+			if(bg>=0)
 				img.set_bg(bg,minx,miny+i);
 		}
 	}else{
@@ -531,9 +531,9 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 		for(i=0;i<=adx;i++){
 			int d=cast(int)(m*i);
 			//printf("%i %i\n",minx+i,miny+d);
-			if(fg>0)
+			if(fg>=0)
 				img.set_fg(fg,minx+i,miny+d);
-			if(bg>0)
+			if(bg>=0)
 				img.set_bg(bg,minx+i,miny+d);
 			int delta=pos-d;
 			int dist=abs(delta);
