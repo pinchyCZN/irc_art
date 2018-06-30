@@ -3,7 +3,6 @@ module winmain;
 import core.runtime;
 import core.sys.windows.windows;
 import core.sys.windows.commctrl;
-import core.stdc.ctype;
 import core.stdc.stdlib;
 import core.stdc.stdio;
 import core.stdc.string;
@@ -19,6 +18,7 @@ import debug_print;
 
 HINSTANCE ghinstance=NULL;
 HWND hmaindlg=NULL;
+HWND himage=NULL;
 enum{
 	APP_SETFOCUS=0,
 	APP_REFRESH=1
@@ -179,7 +179,7 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 	case VK_DOWN:
 		move_clip(0,1);
 		break;
-	case 0x16://ctrl+v
+	case 'V':
 	case VK_RETURN:
 		{
 			int x,y;
@@ -295,6 +295,237 @@ void toggle_check(HWND hwnd,int idc)
 	CheckDlgButton(hwnd,idc,state);
 }
 
+int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_return)
+{
+	int result=false;
+	int vkey=wparam;
+	bool ctrl=GetKeyState(VK_CONTROL)&0x8000;
+	bool shift=GetKeyState(VK_SHIFT)&0x8000;
+	bool alt=false;
+	bool process=false;
+	int ox,oy;
+	IMAGE *img=get_current_image();
+	if(img is null)
+		return result;
+	ox=img.cursor.x;
+	oy=img.cursor.y;
+	if(msg==WM_SYSKEYDOWN)
+		alt=true;
+	SHORTCUT sc;
+	sc.vkey=vkey;
+	sc.ctrl=ctrl;
+	sc.shift=shift;
+	sc.alt=alt;
+	if(!get_shortcut_action(sc))
+		return result;
+
+	switch(sc.action){
+	case SC_OPEN_CHAR_SC_DLG:
+		{
+			SC_DLG_PARAM scp;
+			scp.hparent=GetParent(hwnd);
+			scp.hinstance=ghinstance;
+			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hwnd,&dlg_keyshort,cast(LPARAM)&scp);
+		}
+		break;
+	case SC_OPEN_TEXT_DLG:
+		{
+			TEXT_PARAMS tp;
+			tp.hparent=hmaindlg;
+			tp.img=get_current_image();
+			tp.fg=&get_fg_color;
+			tp.bg=&get_bg_color;
+			tp.fill_char=&get_fill_char;
+			if(tp.img is null)
+				break;
+			if(htextdlg is null)
+				htextdlg=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hmaindlg,&dlg_text,cast(LPARAM)&tp);
+			if(htextdlg !is null){
+				if(ShowWindow(htextdlg,SW_SHOW))
+					SetFocus(htextdlg);
+			}
+		}
+		break;
+	case SC_MOVE_HOME:
+		{
+			if(0==img.cursor.x){
+				img.move_cursor(0,-img.cursor.y);
+			}else{
+				img.move_cursor(-img.cursor.x,0);
+			}
+			img.clip.x=img.cursor.x;
+			img.clip.y=img.cursor.y;
+		}
+		break;
+	case SC_MOVE_END:
+		img.move_cursor(-img.cursor.x,0);
+		img.move_cursor(img.width-1,0);
+		break;
+	case SC_MOVE_LEFT:
+		handle_clip_key(img,vkey,ctrl,shift);
+		img.move_cursor(-1,0);
+		process=TRUE;
+		break;
+	case SC_MOVE_RIGHT:
+		handle_clip_key(img,vkey,ctrl,shift);
+		img.move_cursor(1,0);
+		process=TRUE;
+		break;
+	case SC_MOVE_UP:
+		handle_clip_key(img,vkey,ctrl,shift);
+		img.move_cursor(0,-1);
+		process=TRUE;
+		break;
+	case SC_MOVE_DOWN:
+		handle_clip_key(img,vkey,ctrl,shift);
+		img.move_cursor(0,1);
+		process=TRUE;
+		break;
+	case SC_QUIT:
+		PostQuitMessage(0);
+		break;
+	case SC_DELETE:
+		{
+			int x,y;
+			x=img.cursor.x;
+			y=img.cursor.y;
+			if(!handle_clip_key(img,vkey,ctrl,shift))
+				if(!handle_selection_key(img,vkey,ctrl,shift))
+					img.set_char(' ',x,y);
+		}
+		break;
+	case SC_RETURN:
+		if(!handle_clip_key(img,vkey,ctrl,shift)){
+			img.move_cursor(0,1);
+			img.clear_selection();
+		}
+		break;
+	case SC_CHK_FG:
+		toggle_check(hmaindlg,IDC_FG_CHK);
+		break;
+	case SC_CHK_BG:
+		toggle_check(hmaindlg,IDC_BG_CHK);
+		break;
+	case SC_CHK_FILL:
+		toggle_check(hmaindlg,IDC_FILL_CHK);
+		break;
+	case SC_ASCII:
+		{
+			int x,y;
+			int key_char=sc.data;
+			x=img.cursor.x;
+			y=img.cursor.y;
+			//vkey=0x2580+rand()%10;
+			img.set_char(key_char,x,y);
+			img.set_fg(fg_color,x,y);
+			img.move_cursor(1,0);
+			img.clear_selection();
+		}
+		break;
+	case SC_BACKSPACE:
+		{
+			int x,y;
+			img.move_cursor(-1,0);
+			x=img.cursor.x;
+			y=img.cursor.y;
+			img.set_char(' ',x,y);
+			img.clear_selection();
+		}
+		break;
+	case SC_COPY:
+		if(img.selection_width()>0
+		   && img.selection_height()>0){
+			selection_to_clip(img);
+			memset(&img.selection,0,img.selection.sizeof);
+	   }else{
+			string tmp;
+			if(img.clip.width>0 && img.clip.height>0)
+				tmp=img.get_clip_text();
+			else
+				tmp=img.get_text();
+			if(tmp.length>0){
+				tmp~='\0';
+				copy_str_clipboard(tmp.ptr);
+				print_str_len(GetParent(hwnd),tmp.ptr);
+			}
+		}
+		break;
+	case SC_PASTE:
+		if(!handle_clip_key(img,vkey,ctrl,shift)){
+			import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
+			img.is_modified=false;
+			PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
+		}
+		break;
+	case SC_SELECT_ALL:
+		img.selection.left=0;
+		img.selection.top=0;
+		img.selection.bottom=img.height;
+		img.selection.right=img.width;
+		img.is_modified=true;
+		break;
+	case SC_FLIP:
+		flip_clip(img);
+		break;
+	case SC_FILL:
+		do_fill(img,get_fg_color(),get_bg_color(),get_fill_char());
+		break;
+	case SC_ROTATE:
+		break;
+	case SC_PASTE_INTO_SELECTION:
+		import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
+		img.is_modified=false;
+		PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
+		break;
+	default:
+		break;
+	}
+	if(process){
+		int x,y;
+		x=img.cursor.x;
+		y=img.cursor.y;
+		if(ctrl){
+			int is_inside_clip(int x,int y){
+				int cx,cy,cw,ch;
+				cx=img.clip.x;
+				cy=img.clip.y;
+				cw=img.clip.width;
+				ch=img.clip.height;
+				if(0==cw || 0==ch){
+					do_return=true;
+					return result;
+				}
+				if(x>=cx && x<(cx+cw)){
+					if(y>=cy && y<(cy+ch)){
+						do_return=true;
+						result=true;
+						return result;
+					}
+				}
+				return false;
+			}
+			int fg,bg;
+			fg=get_fg_color();
+			bg=get_bg_color();
+			if(fg>=0){
+				if(!is_inside_clip(ox,oy)){
+					img.set_fg(fg,ox,oy);
+					if(!is_inside_clip(x,y))
+						img.set_fg(fg,x,y);
+				}
+			}
+			if(bg>=0){
+				if(!is_inside_clip(ox,oy)){
+					img.set_bg(bg,ox,oy);
+					if(!is_inside_clip(x,y))
+						img.set_bg(bg,x,y);
+				}
+			}
+		}
+	}
+	return result;
+}
+
 WNDPROC old_image_proc=NULL;
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -347,233 +578,14 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			}
 			break;
 		case WM_CHAR:
-			{
-				int x,y;
-				int code=wparam;
-				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
-				int shift=GetKeyState(VK_SHIFT)&0x8000;
-				IMAGE *img=get_current_image();
-				if(img is null)
-					break;
-				if(code>=' ' && code<=0x7F){
-					if(ctrl){
-						break;
-					}
-					if(shift){
-						int caps=GetKeyState(VK_CAPITAL)&1;
-						if(caps)
-							code=tolower(code);
-						else
-							code=toupper(code);
-					}
-					x=img.cursor.x;
-					y=img.cursor.y;
-					//code=0x2580+rand()%10;
-					img.set_char(code,x,y);
-					img.set_fg(fg_color,x,y);
-					img.move_cursor(1,0);
-					img.clear_selection();
-				}else if('\r'==code){
-					img.move_cursor(0,1);
-					img.clear_selection();
-				}else if('\b'==code){
-					img.move_cursor(-1,0);
-					x=img.cursor.x;
-					y=img.cursor.y;
-					img.set_char(' ',x,y);
-					img.clear_selection();
-				}else{
-					if(ctrl){
-						if(!shift){
-							if(3==code){ //ctrl-c
-								if(img.selection_width()>0
-								   && img.selection_height()>0){
-									selection_to_clip(img);
-									memset(&img.selection,0,img.selection.sizeof);
-								}else{
-									string tmp;
-									if(img.clip.width>0 && img.clip.height>0)
-										tmp=img.get_clip_text();
-									else
-										tmp=img.get_text();
-									if(tmp.length>0){
-											tmp~='\0';
-											copy_str_clipboard(tmp.ptr);
-											print_str_len(GetParent(hwnd),tmp.ptr);
-									}
-								}
-							}else if(0x16==code){ //ctrl-v
-								if(!handle_clip_key(img,code,ctrl,shift)){
-									import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
-									img.is_modified=false;
-									PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
-								}
-							}else if(1==code){ //ctrl-a
-								img.selection.left=0;
-								img.selection.top=0;
-								img.selection.bottom=img.height;
-								img.selection.right=img.width;
-								img.is_modified=true;
-							}else if(6==code){ //ctrl-f
-								if(img.cursor_in_clip()){
-									flip_clip(img);
-								}else
-									do_fill(img,get_fg_color(),get_bg_color(),get_fill_char());
-							}else if(12==code){ //ctrl-r
-
-							}
-						}else if(0x16==code){ //ctrl-v
-							import_clipboard(hmaindlg,*img,TRUE,get_fg_color(),get_bg_color());
-							img.is_modified=false;
-							PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
-						}
-						break;
-					}
-				}
-			}
 			break;
 		case WM_KEYDOWN:
 			{
-				int vkey=wparam;
-				int ctrl=GetKeyState(VK_CONTROL)&0x8000;
-				int shift=GetKeyState(VK_SHIFT)&0x8000;
-				int process=FALSE;
-				int ox,oy;
-				IMAGE *img=get_current_image();
-				if(img is null)
-					break;
-				ox=img.cursor.x;
-				oy=img.cursor.y;
-				switch(vkey){
-					case VK_INSERT:
-						if(ctrl){
-							SC_DLG_PARAM scp;
-							scp.hparent=GetParent(hwnd);
-							scp.hinstance=ghinstance;
-							DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hwnd,&dlg_keyshort,cast(LPARAM)&scp);
-						}else{
-							TEXT_PARAMS tp;
-							tp.hparent=hmaindlg;
-							tp.img=get_current_image();
-							tp.fg=&get_fg_color;
-							tp.bg=&get_bg_color;
-							tp.fill_char=&get_fill_char;
-							if(tp.img is null)
-								break;
-							if(htextdlg is null)
-								htextdlg=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_TEXT),hmaindlg,&dlg_text,cast(LPARAM)&tp);
-							if(htextdlg !is null){
-								if(ShowWindow(htextdlg,SW_SHOW))
-									SetFocus(htextdlg);
-							}
-						}
-						break;
-					case VK_HOME:
-						{
-							if(0==img.cursor.x){
-								img.move_cursor(0,-img.cursor.y);
-							}else{
-								img.move_cursor(-img.cursor.x,0);
-							}
-							img.clip.x=img.cursor.x;
-							img.clip.y=img.cursor.y;
-						}
-						break;
-					case VK_END:
-						{
-							img.move_cursor(-img.cursor.x,0);
-							img.move_cursor(img.width-1,0);
-						}
-						break;
-					case VK_LEFT:
-						handle_clip_key(img,vkey,ctrl,shift);
-						img.move_cursor(-1,0);
-						process=TRUE;
-						break;
-					case VK_RIGHT:
-						handle_clip_key(img,vkey,ctrl,shift);
-						img.move_cursor(1,0);
-						process=TRUE;
-						break;
-					case VK_UP:
-						handle_clip_key(img,vkey,ctrl,shift);
-						img.move_cursor(0,-1);
-						process=TRUE;
-						break;
-					case VK_DOWN:
-						handle_clip_key(img,vkey,ctrl,shift);
-						img.move_cursor(0,1);
-						process=TRUE;
-						break;
-					case VK_ESCAPE:
-						PostQuitMessage(0);
-						break;
-					case VK_DELETE:
-						{
-							int x,y;
-							x=img.cursor.x;
-							y=img.cursor.y;
-							if(!handle_clip_key(img,vkey,ctrl,shift))
-								if(!handle_selection_key(img,vkey,ctrl,shift))
-									img.set_char(' ',x,y);
-						}
-						break;
-					case VK_RETURN:
-						handle_clip_key(img,vkey,ctrl,shift);
-						break;
-					case '1':
-						if(ctrl)
-							toggle_check(hmaindlg,IDC_FG_CHK);
-						break;
-					case '2':
-						if(ctrl)
-							toggle_check(hmaindlg,IDC_BG_CHK);
-						break;
-					case '3':
-						if(ctrl)
-							toggle_check(hmaindlg,IDC_FILL_CHK);
-						break;
-					default:
-						break;
-				}
-				if(process){
-					int x,y;
-					x=img.cursor.x;
-					y=img.cursor.y;
-					if(ctrl){
-						int is_inside_clip(int x,int y){
-							int cx,cy,cw,ch;
-							cx=img.clip.x;
-							cy=img.clip.y;
-							cw=img.clip.width;
-							ch=img.clip.height;
-							if(0==cw || 0==ch)
-								return false;
-							if(x>=cx && x<(cx+cw)){
-								if(y>=cy && y<(cy+ch))
-									return true;
-							}
-							return false;
-						}
-						int fg,bg;
-						fg=get_fg_color();
-						bg=get_bg_color();
-						if(fg>=0){
-							if(!is_inside_clip(ox,oy)){
-								img.set_fg(fg,ox,oy);
-								if(!is_inside_clip(x,y))
-									img.set_fg(fg,x,y);
-							}
-						}
-						if(bg>=0){
-							if(!is_inside_clip(ox,oy)){
-								img.set_bg(bg,ox,oy);
-								if(!is_inside_clip(x,y))
-									img.set_bg(bg,x,y);
-							}
-						}
-					}
-				}
+				int do_return=false;
+				int val;
+				val=image_keydown(hwnd,msg,wparam,lparam,do_return);
+				if(do_return)
+					return val;
 			}
 			break;
 		default:
@@ -768,12 +780,13 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			init_image();
 			display_image_size(hwnd);
 			update_status(hwnd);
-			old_image_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_IMAGE),GWL_WNDPROC,cast(LONG_PTR)&image_proc);
+			himage=GetDlgItem(hwnd,IDC_IMAGE);
+			old_image_proc=cast(WNDPROC)SetWindowLongPtr(himage,GWL_WNDPROC,cast(LONG_PTR)&image_proc);
 			old_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLORS),GWL_WNDPROC,cast(LONG_PTR)&palette_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_ROWS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
 			old_edit_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_COLS),GWL_WNDPROC,cast(LONG_PTR)&edit_proc);
 			old_ext_palette_proc=cast(WNDPROC)SetWindowLongPtr(GetDlgItem(hwnd,IDC_EXT_COLORS),GWL_WNDPROC,cast(LONG_PTR)&ext_palette_proc);
-			SetFocus(GetDlgItem(hwnd,IDC_IMAGE));
+			SetFocus(himage);
 			SendDlgItemMessage(hwnd,IDC_ROWS,EM_LIMITTEXT,4,0);
 			SendDlgItemMessage(hwnd,IDC_COLS,EM_LIMITTEXT,4,0);
 			SendDlgItemMessage(hwnd,IDC_CHAR,EM_LIMITTEXT,1,0);
@@ -981,7 +994,8 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 			break;
 		}else{
 			if(!IsDialogMessage(hmaindlg,&msg)){
-				TranslateMessage(&msg);
+				if(msg.hwnd!=himage)
+					TranslateMessage(&msg);
 				DispatchMessage(&msg);
 			}
 		}

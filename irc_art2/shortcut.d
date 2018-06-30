@@ -26,6 +26,240 @@ WIN_REL_POS keyshort_win_pos;
 wstring[] DLG_COLS=["val","char","key"];
 enum{COL_VAL=0,COL_CHAR=1,COL_KEY=2};
 
+struct SHORTCUT{
+	int action;
+	int vkey;
+	int key_char;
+	bool ctrl;
+	bool shift;
+	bool alt;
+	WCHAR data;
+}
+struct SHORTCUT_PARAM{
+	SHORTCUT sc;
+	int edit;
+}
+enum{
+	SC_ASCII=0,
+	SC_COPY,
+	SC_PASTE,
+	SC_PASTE_INTO_SELECTION,
+	SC_OPEN_TEXT_DLG,
+	SC_OPEN_CHAR_SC_DLG,
+	SC_OPEN_FUNC_SC_DLG,
+	SC_CHK_FG,
+	SC_CHK_BG,
+	SC_CHK_FILL,
+	SC_SELECT_ALL,
+	SC_FILL,
+	SC_FLIP,
+	SC_ROTATE,
+	SC_RETURN,
+	SC_BACKSPACE,
+	SC_DELETE,
+	SC_MOVE_HOME,
+	SC_MOVE_END,
+	SC_MOVE_UP,
+	SC_MOVE_DOWN,
+	SC_MOVE_LEFT,
+	SC_MOVE_RIGHT,
+	SC_QUIT,
+	SC_NONE,
+}
+SHORTCUT[] sc_map=[
+	{action:SC_QUIT,vkey:VK_ESCAPE},
+	{action:SC_OPEN_TEXT_DLG,vkey:VK_INSERT},
+	{action:SC_OPEN_CHAR_SC_DLG,vkey:VK_INSERT,ctrl:true},
+	{action:SC_OPEN_FUNC_SC_DLG,vkey:VK_F12},
+	{action:SC_COPY,vkey:'C',ctrl:true},
+	{action:SC_PASTE,vkey:'V',ctrl:true},
+	{action:SC_PASTE_INTO_SELECTION,vkey:'V',ctrl:true,shift:true},
+	{action:SC_CHK_FG,vkey:'1',ctrl:true},
+	{action:SC_CHK_BG,vkey:'2',ctrl:true},
+	{action:SC_CHK_FILL,vkey:'3',ctrl:true},
+	{action:SC_SELECT_ALL,vkey:'A',ctrl:true},
+	{action:SC_FILL,vkey:'F',ctrl:true},
+	{action:SC_FLIP,vkey:'F',ctrl:true,shift:true},
+	{action:SC_ROTATE,vkey:'R',ctrl:true},
+	{action:SC_RETURN,vkey:VK_RETURN},
+	{action:SC_BACKSPACE,vkey:VK_BACK},
+	{action:SC_DELETE,vkey:VK_DELETE},
+	{action:SC_MOVE_HOME,vkey:VK_HOME},
+	{action:SC_MOVE_END,vkey:VK_END},
+	{action:SC_MOVE_UP,vkey:VK_UP},
+	{action:SC_MOVE_DOWN,vkey:VK_DOWN},
+	{action:SC_MOVE_LEFT,vkey:VK_LEFT},
+	{action:SC_MOVE_RIGHT,vkey:VK_RIGHT},
+];
+SHORTCUT[] sc_ascii;
+
+struct KEYMAP{
+	BYTE val;
+	wstring name;
+}
+KEYMAP[] keylist=[
+	{0x01,"VK_LBUTTON"},
+	{0x02,"VK_RBUTTON"},
+	{0x03,"VK_CANCEL"},
+	{0x04,"VK_MBUTTON"},
+	{0x05,"VK_XBUTTON1"},
+	{0x06,"VK_XBUTTON2"},
+	{0x08,"VK_BACK"},
+	{0x09,"VK_TAB"},
+	{0x0C,"VK_CLEAR"},
+	{0x0D,"VK_RETURN"},
+	{0x10,"VK_SHIFT"},
+	{0x11,"VK_CONTROL"},
+	{0x12,"VK_MENU"},
+	{0x13,"VK_PAUSE"},
+	{0x14,"VK_CAPITAL"},
+	{0x15,"VK_KANA"},
+	{0x15,"VK_HANGEUL"},
+	{0x15,"VK_HANGUL"},
+	{0x17,"VK_JUNJA"},
+	{0x18,"VK_FINAL"},
+	{0x19,"VK_HANJA"},
+	{0x19,"VK_KANJI"},
+	{0x1B,"VK_ESCAPE"},
+	{0x1C,"VK_CONVERT"},
+	{0x1D,"VK_NONCONVERT"},
+	{0x1E,"VK_ACCEPT"},
+	{0x1F,"VK_MODECHANGE"},
+	{0x20,"VK_SPACE"},
+	{0x21,"VK_PRIOR"},
+	{0x22,"VK_NEXT"},
+	{0x23,"VK_END"},
+	{0x24,"VK_HOME"},
+	{0x25,"VK_LEFT"},
+	{0x26,"VK_UP"},
+	{0x27,"VK_RIGHT"},
+	{0x28,"VK_DOWN"},
+	{0x29,"VK_SELECT"},
+	{0x2A,"VK_PRINT"},
+	{0x2B,"VK_EXECUTE"},
+	{0x2C,"VK_SNAPSHOT"},
+	{0x2D,"VK_INSERT"},
+	{0x2E,"VK_DELETE"},
+	{0x2F,"VK_HELP"},
+	{0x5B,"VK_LWIN"},
+	{0x5C,"VK_RWIN"},
+	{0x5D,"VK_APPS"},
+	{0x5F,"VK_SLEEP"},
+	{0x60,"VK_NUMPAD0"},
+	{0x61,"VK_NUMPAD1"},
+	{0x62,"VK_NUMPAD2"},
+	{0x63,"VK_NUMPAD3"},
+	{0x64,"VK_NUMPAD4"},
+	{0x65,"VK_NUMPAD5"},
+	{0x66,"VK_NUMPAD6"},
+	{0x67,"VK_NUMPAD7"},
+	{0x68,"VK_NUMPAD8"},
+	{0x69,"VK_NUMPAD9"},
+	{0x6A,"VK_MULTIPLY"},
+	{0x6B,"VK_ADD"},
+	{0x6C,"VK_SEPARATOR"},
+	{0x6D,"VK_SUBTRACT"},
+	{0x6E,"VK_DECIMAL"},
+	{0x6F,"VK_DIVIDE"},
+	{0x70,"VK_F1"},
+	{0x71,"VK_F2"},
+	{0x72,"VK_F3"},
+	{0x73,"VK_F4"},
+	{0x74,"VK_F5"},
+	{0x75,"VK_F6"},
+	{0x76,"VK_F7"},
+	{0x77,"VK_F8"},
+	{0x78,"VK_F9"},
+	{0x79,"VK_F10"},
+	{0x7A,"VK_F11"},
+	{0x7B,"VK_F12"},
+	{0x7C,"VK_F13"},
+	{0x7D,"VK_F14"},
+	{0x7E,"VK_F15"},
+	{0x7F,"VK_F16"},
+	{0x80,"VK_F17"},
+	{0x81,"VK_F18"},
+	{0x82,"VK_F19"},
+	{0x83,"VK_F20"},
+	{0x84,"VK_F21"},
+	{0x85,"VK_F22"},
+	{0x86,"VK_F23"},
+	{0x87,"VK_F24"},
+	{0x90,"VK_NUMLOCK"},
+	{0x91,"VK_SCROLL"},
+	{0x92,"VK_OEM_NEC_EQUAL"},
+	{0x92,"VK_OEM_FJ_JISHO"},
+	{0x93,"VK_OEM_FJ_MASSHOU"},
+	{0x94,"VK_OEM_FJ_TOUROKU"},
+	{0x95,"VK_OEM_FJ_LOYA"},
+	{0x96,"VK_OEM_FJ_ROYA"},
+	{0xA0,"VK_LSHIFT"},
+	{0xA1,"VK_RSHIFT"},
+	{0xA2,"VK_LCONTROL"},
+	{0xA3,"VK_RCONTROL"},
+	{0xA4,"VK_LMENU"},
+	{0xA5,"VK_RMENU"},
+	{0xA6,"VK_BROWSER_BACK"},
+	{0xA7,"VK_BROWSER_FORWARD"},
+	{0xA8,"VK_BROWSER_REFRESH"},
+	{0xA9,"VK_BROWSER_STOP"},
+	{0xAA,"VK_BROWSER_SEARCH"},
+	{0xAB,"VK_BROWSER_FAVORITES"},
+	{0xAC,"VK_BROWSER_HOME"},
+	{0xAD,"VK_VOLUME_MUTE"},
+	{0xAE,"VK_VOLUME_DOWN"},
+	{0xAF,"VK_VOLUME_UP"},
+	{0xB0,"VK_MEDIA_NEXT_TRACK"},
+	{0xB1,"VK_MEDIA_PREV_TRACK"},
+	{0xB2,"VK_MEDIA_STOP"},
+	{0xB3,"VK_MEDIA_PLAY_PAUSE"},
+	{0xB4,"VK_LAUNCH_MAIL"},
+	{0xB5,"VK_LAUNCH_MEDIA_SELECT"},
+	{0xB6,"VK_LAUNCH_APP1"},
+	{0xB7,"VK_LAUNCH_APP2"},
+	{0xBA,"VK_OEM_1"},
+	{0xBB,"VK_OEM_PLUS"},
+	{0xBC,"VK_OEM_COMMA"},
+	{0xBD,"VK_OEM_MINUS"},
+	{0xBE,"VK_OEM_PERIOD"},
+	{0xBF,"VK_OEM_2"},
+	{0xC0,"VK_OEM_3"},
+	{0xDB,"VK_OEM_4"},
+	{0xDC,"VK_OEM_5"},
+	{0xDD,"VK_OEM_6"},
+	{0xDE,"VK_OEM_7"},
+	{0xDF,"VK_OEM_8"},
+	{0xE1,"VK_OEM_AX"},
+	{0xE2,"VK_OEM_102"},
+	{0xE3,"VK_ICO_HELP"},
+	{0xE4,"VK_ICO_00"},
+	{0xE5,"VK_PROCESSKEY"},
+	{0xE6,"VK_ICO_CLEAR"},
+	{0xE7,"VK_PACKET"},
+	{0xE9,"VK_OEM_RESET"},
+	{0xEA,"VK_OEM_JUMP"},
+	{0xEB,"VK_OEM_PA1"},
+	{0xEC,"VK_OEM_PA2"},
+	{0xED,"VK_OEM_PA3"},
+	{0xEE,"VK_OEM_WSCTRL"},
+	{0xEF,"VK_OEM_CUSEL"},
+	{0xF0,"VK_OEM_ATTN"},
+	{0xF1,"VK_OEM_FINISH"},
+	{0xF2,"VK_OEM_COPY"},
+	{0xF3,"VK_OEM_AUTO"},
+	{0xF4,"VK_OEM_ENLW"},
+	{0xF5,"VK_OEM_BACKTAB"},
+	{0xF6,"VK_ATTN"},
+	{0xF7,"VK_CRSEL"},
+	{0xF8,"VK_EXSEL"},
+	{0xF9,"VK_EREOF"},
+	{0xFA,"VK_PLAY"},
+	{0xFB,"VK_ZOOM"},
+	{0xFC,"VK_NONAME"},
+	{0xFD,"VK_PA1"},
+	{0xFE,"VK_OEM_CLEAR"},
+];
+
 void init_lview(HWND hparent,HWND hlview)
 {
 	try{
@@ -294,191 +528,13 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	return FALSE;
 }
 
-struct KEYMAP{
-	BYTE val;
-	wstring name;
-}
-KEYMAP[] keylist=[
-	{0x01,"VK_LBUTTON"},
-	{0x02,"VK_RBUTTON"},
-	{0x03,"VK_CANCEL"},
-	{0x04,"VK_MBUTTON"},
-	{0x05,"VK_XBUTTON1"},
-	{0x06,"VK_XBUTTON2"},
-	{0x08,"VK_BACK"},
-	{0x09,"VK_TAB"},
-	{0x0C,"VK_CLEAR"},
-	{0x0D,"VK_RETURN"},
-	{0x10,"VK_SHIFT"},
-	{0x11,"VK_CONTROL"},
-	{0x12,"VK_MENU"},
-	{0x13,"VK_PAUSE"},
-	{0x14,"VK_CAPITAL"},
-	{0x15,"VK_KANA"},
-	{0x15,"VK_HANGEUL"},
-	{0x15,"VK_HANGUL"},
-	{0x17,"VK_JUNJA"},
-	{0x18,"VK_FINAL"},
-	{0x19,"VK_HANJA"},
-	{0x19,"VK_KANJI"},
-	{0x1B,"VK_ESCAPE"},
-	{0x1C,"VK_CONVERT"},
-	{0x1D,"VK_NONCONVERT"},
-	{0x1E,"VK_ACCEPT"},
-	{0x1F,"VK_MODECHANGE"},
-	{0x20,"VK_SPACE"},
-	{0x21,"VK_PRIOR"},
-	{0x22,"VK_NEXT"},
-	{0x23,"VK_END"},
-	{0x24,"VK_HOME"},
-	{0x25,"VK_LEFT"},
-	{0x26,"VK_UP"},
-	{0x27,"VK_RIGHT"},
-	{0x28,"VK_DOWN"},
-	{0x29,"VK_SELECT"},
-	{0x2A,"VK_PRINT"},
-	{0x2B,"VK_EXECUTE"},
-	{0x2C,"VK_SNAPSHOT"},
-	{0x2D,"VK_INSERT"},
-	{0x2E,"VK_DELETE"},
-	{0x2F,"VK_HELP"},
-	{0x5B,"VK_LWIN"},
-	{0x5C,"VK_RWIN"},
-	{0x5D,"VK_APPS"},
-	{0x5F,"VK_SLEEP"},
-	{0x60,"VK_NUMPAD0"},
-	{0x61,"VK_NUMPAD1"},
-	{0x62,"VK_NUMPAD2"},
-	{0x63,"VK_NUMPAD3"},
-	{0x64,"VK_NUMPAD4"},
-	{0x65,"VK_NUMPAD5"},
-	{0x66,"VK_NUMPAD6"},
-	{0x67,"VK_NUMPAD7"},
-	{0x68,"VK_NUMPAD8"},
-	{0x69,"VK_NUMPAD9"},
-	{0x6A,"VK_MULTIPLY"},
-	{0x6B,"VK_ADD"},
-	{0x6C,"VK_SEPARATOR"},
-	{0x6D,"VK_SUBTRACT"},
-	{0x6E,"VK_DECIMAL"},
-	{0x6F,"VK_DIVIDE"},
-	{0x70,"VK_F1"},
-	{0x71,"VK_F2"},
-	{0x72,"VK_F3"},
-	{0x73,"VK_F4"},
-	{0x74,"VK_F5"},
-	{0x75,"VK_F6"},
-	{0x76,"VK_F7"},
-	{0x77,"VK_F8"},
-	{0x78,"VK_F9"},
-	{0x79,"VK_F10"},
-	{0x7A,"VK_F11"},
-	{0x7B,"VK_F12"},
-	{0x7C,"VK_F13"},
-	{0x7D,"VK_F14"},
-	{0x7E,"VK_F15"},
-	{0x7F,"VK_F16"},
-	{0x80,"VK_F17"},
-	{0x81,"VK_F18"},
-	{0x82,"VK_F19"},
-	{0x83,"VK_F20"},
-	{0x84,"VK_F21"},
-	{0x85,"VK_F22"},
-	{0x86,"VK_F23"},
-	{0x87,"VK_F24"},
-	{0x90,"VK_NUMLOCK"},
-	{0x91,"VK_SCROLL"},
-	{0x92,"VK_OEM_NEC_EQUAL"},
-	{0x92,"VK_OEM_FJ_JISHO"},
-	{0x93,"VK_OEM_FJ_MASSHOU"},
-	{0x94,"VK_OEM_FJ_TOUROKU"},
-	{0x95,"VK_OEM_FJ_LOYA"},
-	{0x96,"VK_OEM_FJ_ROYA"},
-	{0xA0,"VK_LSHIFT"},
-	{0xA1,"VK_RSHIFT"},
-	{0xA2,"VK_LCONTROL"},
-	{0xA3,"VK_RCONTROL"},
-	{0xA4,"VK_LMENU"},
-	{0xA5,"VK_RMENU"},
-	{0xA6,"VK_BROWSER_BACK"},
-	{0xA7,"VK_BROWSER_FORWARD"},
-	{0xA8,"VK_BROWSER_REFRESH"},
-	{0xA9,"VK_BROWSER_STOP"},
-	{0xAA,"VK_BROWSER_SEARCH"},
-	{0xAB,"VK_BROWSER_FAVORITES"},
-	{0xAC,"VK_BROWSER_HOME"},
-	{0xAD,"VK_VOLUME_MUTE"},
-	{0xAE,"VK_VOLUME_DOWN"},
-	{0xAF,"VK_VOLUME_UP"},
-	{0xB0,"VK_MEDIA_NEXT_TRACK"},
-	{0xB1,"VK_MEDIA_PREV_TRACK"},
-	{0xB2,"VK_MEDIA_STOP"},
-	{0xB3,"VK_MEDIA_PLAY_PAUSE"},
-	{0xB4,"VK_LAUNCH_MAIL"},
-	{0xB5,"VK_LAUNCH_MEDIA_SELECT"},
-	{0xB6,"VK_LAUNCH_APP1"},
-	{0xB7,"VK_LAUNCH_APP2"},
-	{0xBA,"VK_OEM_1"},
-	{0xBB,"VK_OEM_PLUS"},
-	{0xBC,"VK_OEM_COMMA"},
-	{0xBD,"VK_OEM_MINUS"},
-	{0xBE,"VK_OEM_PERIOD"},
-	{0xBF,"VK_OEM_2"},
-	{0xC0,"VK_OEM_3"},
-	{0xDB,"VK_OEM_4"},
-	{0xDC,"VK_OEM_5"},
-	{0xDD,"VK_OEM_6"},
-	{0xDE,"VK_OEM_7"},
-	{0xDF,"VK_OEM_8"},
-	{0xE1,"VK_OEM_AX"},
-	{0xE2,"VK_OEM_102"},
-	{0xE3,"VK_ICO_HELP"},
-	{0xE4,"VK_ICO_00"},
-	{0xE5,"VK_PROCESSKEY"},
-	{0xE6,"VK_ICO_CLEAR"},
-	{0xE7,"VK_PACKET"},
-	{0xE9,"VK_OEM_RESET"},
-	{0xEA,"VK_OEM_JUMP"},
-	{0xEB,"VK_OEM_PA1"},
-	{0xEC,"VK_OEM_PA2"},
-	{0xED,"VK_OEM_PA3"},
-	{0xEE,"VK_OEM_WSCTRL"},
-	{0xEF,"VK_OEM_CUSEL"},
-	{0xF0,"VK_OEM_ATTN"},
-	{0xF1,"VK_OEM_FINISH"},
-	{0xF2,"VK_OEM_COPY"},
-	{0xF3,"VK_OEM_AUTO"},
-	{0xF4,"VK_OEM_ENLW"},
-	{0xF5,"VK_OEM_BACKTAB"},
-	{0xF6,"VK_ATTN"},
-	{0xF7,"VK_CRSEL"},
-	{0xF8,"VK_EXSEL"},
-	{0xF9,"VK_EREOF"},
-	{0xFA,"VK_PLAY"},
-	{0xFB,"VK_ZOOM"},
-	{0xFC,"VK_NONAME"},
-	{0xFD,"VK_PA1"},
-	{0xFE,"VK_OEM_CLEAR"},
-];
-struct SHORTCUT{
-	int vkey;
-	int key_char;
-	int ctrl;
-	int shift;
-	int alt;
-}
-struct SHORTCUT_PARAM{
-	SHORTCUT sc;
-	WCHAR letter;
-	int edit;
-}
 int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 {
 	int result=FALSE;
 	WCHAR[40] tmp;
 	tmp[0]=0;
 	get_item_text(hlview,tmp,item,1);
-	scp.letter=tmp[0];
+	scp.sc.data=tmp[0];
 	memset(tmp.ptr,0,tmp.sizeof);
 	get_item_text(hlview,tmp,item,COL_KEY);
 	try{
@@ -582,6 +638,9 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
+	case WM_CREATE:
+		memset(&sc,0,sc.sizeof);
+		break;
 	case WM_GETDLGCODE:
 		{
 			int key=wparam;
@@ -683,11 +742,11 @@ BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					wstring str=get_sc_key_text(scp.sc);
 					str~='\0';
 					SetWindowText(hedit,str.ptr);
-					str="Edit shortcut for:"w~scp.letter~'\0';
+					str="Edit shortcut for:"w~scp.sc.data~'\0';
 					SetWindowText(hwnd,str.ptr);
 				}
 				WCHAR[20] tmp;
-				print_hex(tmp,scp.letter);
+				print_hex(tmp,scp.sc.data);
 				SetDlgItemText(hwnd,IDC_HEXVAL,tmp.ptr);
 			}
 		}
@@ -712,4 +771,63 @@ BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		break;
 	}
 	return FALSE;
+}
+int compare_sc(const SHORTCUT a,const SHORTCUT b)
+{
+	int result=false;
+	if(a.vkey==b.vkey
+	   && a.ctrl==b.ctrl
+	   && a.shift==b.shift
+	   && a.alt==b.alt)
+		result=true;
+	return result;
+}
+int process_ascii_map(int char_code,ref SHORTCUT sc)
+{
+	int result=false;
+	foreach(c;sc_ascii){
+		if(compare_sc(c,sc)){
+			if(char_code==sc.key_char){
+				result=true;
+				sc.action=SC_ASCII;
+				sc.data=c.data;
+				break;
+			}
+		}
+	}
+	return result;
+}
+int get_shortcut_action(ref SHORTCUT sc)
+{
+	int result=false;
+	foreach(c;sc_map){
+		if(compare_sc(c,sc)){
+			result=true;
+			sc=c;
+			break;
+		}
+	}
+	if(!result){
+		int char_code=MapVirtualKey(sc.vkey,MAPVK_VK_TO_CHAR);
+		if(char_code!=0){
+			result=process_ascii_map(char_code,sc);
+			if(!result){
+				import core.stdc.ctype;
+				if(sc.shift){
+					int caps=GetKeyState(VK_CAPITAL)&1;
+					if(caps)
+						char_code=tolower(char_code);
+					else
+						char_code=toupper(char_code);
+				}else{
+					char_code=tolower(char_code);
+				}
+				sc.action=SC_ASCII;
+				sc.data=cast(WCHAR)char_code;
+				result=true;
+			}
+			return result;
+		}
+	}
+	return result;
 }
