@@ -439,6 +439,20 @@ int paint_image(HWND hwnd,HDC hdc)
 	}
 	return result;
 }
+int is_bad_inverse(int color)
+{
+	int result=false;
+	const int[] bad_colors=[
+		14,93,94,95,96,97,7,53
+	];
+	foreach(c;bad_colors){
+		if(color==c){
+			result=true;
+			break;
+		}
+	}
+	return result;
+}
 void draw_focus_rect(IMAGE *img,HDC hdc,RECT rect)
 {
 	RECT tmp=rect;
@@ -461,7 +475,7 @@ void draw_focus_rect(IMAGE *img,HDC hdc,RECT rect)
 		if(img.is_valid_pos(tx,ty)){
 			int index=tx+ty*img.width;
 			int c=img.cells[index].bg;
-			if(c==14 || c==93 || c==94 || c==95 || c==96 || c==97){
+			if(is_bad_inverse(c)){
 				static HBRUSH hbr;
 				if(hbr is null)
 					hbr=CreateSolidBrush(RGB(0xFF,0,0));
@@ -511,7 +525,7 @@ int max(int a,int b)
 	return a>b?a:b;
 }
 
-void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
+void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg,int fill)
 {
 	int dx,dy;
 	int minx,miny;
@@ -527,6 +541,8 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 				img.set_fg(fg,minx+i,miny);
 			if(bg>=0)
 				img.set_bg(bg,minx+i,miny);
+			if(fill)
+				img.set_char(fill,minx+i,miny);
 		}
 	}else if(0==dx){
 		int i;
@@ -536,6 +552,8 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 				img.set_fg(fg,minx,miny+i);
 			if(bg>=0)
 				img.set_bg(bg,minx,miny+i);
+			if(fill)
+				img.set_char(fill,minx,miny+i);
 		}
 	}else{
 		int i;
@@ -555,6 +573,8 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 				img.set_fg(fg,minx+i,miny+d);
 			if(bg>=0)
 				img.set_bg(bg,minx+i,miny+d);
+			if(fill)
+				img.set_char(fill,minx+i,miny+d);
 			int delta=pos-d;
 			int dist=abs(delta);
 			if(dist>1){
@@ -568,8 +588,12 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg)
 					ty=miny+d+j*dir;
 					if(j>(dist>>1))
 						tx-=1;
-					//printf(">%i %i\n",tx,ty);
-					img.set_bg(bg,tx,ty);
+					if(bg>=0)
+						img.set_bg(bg,tx,ty);
+					if(fg>=0)
+						img.set_fg(fg,tx,ty);
+					if(fill)
+						img.set_char(fill,tx,ty);
 				}
 			}
 			pos=d;

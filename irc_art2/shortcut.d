@@ -63,6 +63,8 @@ enum{
 	SC_MOVE_DOWN,
 	SC_MOVE_LEFT,
 	SC_MOVE_RIGHT,
+	SC_PAINT_BEGIN,
+	SC_PAINT_MOVE,
 	SC_QUIT,
 	SC_NONE,
 }
@@ -90,6 +92,11 @@ SHORTCUT[] sc_map=[
 	{action:SC_MOVE_DOWN,vkey:VK_DOWN},
 	{action:SC_MOVE_LEFT,vkey:VK_LEFT},
 	{action:SC_MOVE_RIGHT,vkey:VK_RIGHT},
+	{action:SC_PAINT_BEGIN,vkey:VK_LBUTTON,ctrl:true},
+	{action:SC_PAINT_MOVE,vkey:VK_UP,ctrl:true},
+	{action:SC_PAINT_MOVE,vkey:VK_DOWN,ctrl:true},
+	{action:SC_PAINT_MOVE,vkey:VK_LEFT,ctrl:true},
+	{action:SC_PAINT_MOVE,vkey:VK_RIGHT,ctrl:true},
 ];
 SHORTCUT[] sc_ascii;
 
@@ -813,14 +820,22 @@ int get_shortcut_action(ref SHORTCUT sc)
 			result=process_ascii_map(char_code,sc);
 			if(!result){
 				import core.stdc.ctype;
+				int caps=GetKeyState(VK_CAPITAL)&1;
 				if(sc.shift){
-					int caps=GetKeyState(VK_CAPITAL)&1;
-					if(caps)
-						char_code=tolower(char_code);
-					else
-						char_code=toupper(char_code);
+					int ret;
+					WORD[4] trans;
+					BYTE[256] key_state;
+					GetKeyboardState(key_state.ptr);
+					trans[0]=0;
+					ret=ToAscii(sc.vkey,0,key_state.ptr,trans.ptr,0);
+					if(ret>0){
+						ret=trans[0];
+						if(ret)
+							char_code=ret;
+					}
 				}else{
-					char_code=tolower(char_code);
+					if(!caps)
+						char_code=tolower(char_code);
 				}
 				sc.action=SC_ASCII;
 				sc.data=cast(WCHAR)char_code;

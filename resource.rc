@@ -63,7 +63,7 @@ BEGIN
     CONTROL         "BG",IDC_BG_CHK,"Button",BS_AUTOCHECKBOX | BS_LEFTTEXT,274,19,26,10
     CONTROL         "FG",IDC_FG,"Button",BS_OWNERDRAW,302,0,29,14
     CONTROL         "BG",IDC_BG,"Button",BS_OWNERDRAW,302,17,30,14
-    PUSHBUTTON      "File",IDC_FILE,335,0,37,14,NOT WS_TABSTOP
+    PUSHBUTTON      "Menu",IDC_MENU,335,0,37,14,NOT WS_TABSTOP
     EDITTEXT        IDC_CHAR,363,18,17,16,ES_AUTOHSCROLL | NOT WS_TABSTOP
     LTEXT           "ROWS",IDC_STATIC,382,3,24,8
     LTEXT           "COLS",IDC_STATIC,384,17,20,8
@@ -151,6 +151,11 @@ BEGIN
         MENUITEM "&Save",                       IDM_SAVE
         MENUITEM "Save &as",                    IDM_SAVEAS
         MENUITEM "&Copy to clipboard",          IDM_COPYTOCLIP
+        MENUITEM SEPARATOR
+        MENUITEM "Insert text",                 IDM_INSERT_TEXT
+        MENUITEM SEPARATOR
+        MENUITEM "Hotkeys",                     IDM_HOTKEYS
+        MENUITEM "Ascii map",                   IDM_ASCIIMAP
     END
 END
 

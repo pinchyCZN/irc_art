@@ -84,12 +84,13 @@ int process_mouse(int flags,short x,short y)
 			ox=img.cursor.x;
 			oy=img.cursor.y;
 			if(image_click(img,x,y)){
-				int fg,bg;
+				int fg,bg,fill;
 				fg=get_fg_color();
 				bg=get_bg_color();
+				fill=get_fill_char();
 				if(flags&MK_RBUTTON)
 					fg=-1;
-				draw_line(img,ox,oy,img.cursor.x,img.cursor.y,fg,bg);
+				draw_line(img,ox,oy,img.cursor.x,img.cursor.y,fg,bg,fill);
 			}
 		}
 	}else if(flags&MK_SHIFT){
@@ -137,9 +138,9 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 		return result;
 	if(!cursor_in_clip(img))
 		return result;
-	void move_clip(int x,int y){
+	int move_clip(int x,int y){
 		if(ctrl)
-			return;
+			return false;
 		img.clip.x+=x;
 		img.clip.y+=y;
 		result=true;
@@ -159,6 +160,7 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 			img.clip.y=img.height-1;
 			result=false;
 		}
+		return result;
 	}
 	switch(vkey){
 	case VK_DELETE:
@@ -168,16 +170,20 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 		result=true;
 		break;
 	case VK_LEFT:
-		move_clip(-1,0);
+		if(move_clip(-1,0))
+			img.move_cursor(-1,0);
 		break;
 	case VK_RIGHT:
-		move_clip(1,0);
+		if(move_clip(1,0))
+			img.move_cursor(1,0);
 		break;
 	case VK_UP:
-		move_clip(0,-1);
+		if(move_clip(0,-1))
+			img.move_cursor(0,-1);
 		break;
 	case VK_DOWN:
-		move_clip(0,1);
+		if(move_clip(0,1))
+			img.move_cursor(0,1);
 		break;
 	case 'V':
 	case VK_RETURN:
@@ -294,38 +300,16 @@ void toggle_check(HWND hwnd,int idc)
 		state=BST_UNCHECKED;
 	CheckDlgButton(hwnd,idc,state);
 }
-
-int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_return)
+int do_action(const SHORTCUT sc,IMAGE *img)
 {
 	int result=false;
-	int vkey=wparam;
-	bool ctrl=GetKeyState(VK_CONTROL)&0x8000;
-	bool shift=GetKeyState(VK_SHIFT)&0x8000;
-	bool alt=false;
-	bool process=false;
-	int ox,oy;
-	IMAGE *img=get_current_image();
-	if(img is null)
-		return result;
-	ox=img.cursor.x;
-	oy=img.cursor.y;
-	if(msg==WM_SYSKEYDOWN)
-		alt=true;
-	SHORTCUT sc;
-	sc.vkey=vkey;
-	sc.ctrl=ctrl;
-	sc.shift=shift;
-	sc.alt=alt;
-	if(!get_shortcut_action(sc))
-		return result;
-
 	switch(sc.action){
 	case SC_OPEN_CHAR_SC_DLG:
 		{
 			SC_DLG_PARAM scp;
-			scp.hparent=GetParent(hwnd);
+			scp.hparent=hmaindlg;
 			scp.hinstance=ghinstance;
-			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hwnd,&dlg_keyshort,cast(LPARAM)&scp);
+			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_keyshort,cast(LPARAM)&scp);
 		}
 		break;
 	case SC_OPEN_TEXT_DLG:
@@ -362,24 +346,60 @@ int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_retu
 		img.move_cursor(img.width-1,0);
 		break;
 	case SC_MOVE_LEFT:
-		handle_clip_key(img,vkey,ctrl,shift);
 		img.move_cursor(-1,0);
-		process=TRUE;
 		break;
 	case SC_MOVE_RIGHT:
-		handle_clip_key(img,vkey,ctrl,shift);
 		img.move_cursor(1,0);
-		process=TRUE;
 		break;
 	case SC_MOVE_UP:
-		handle_clip_key(img,vkey,ctrl,shift);
 		img.move_cursor(0,-1);
-		process=TRUE;
 		break;
 	case SC_MOVE_DOWN:
-		handle_clip_key(img,vkey,ctrl,shift);
 		img.move_cursor(0,1);
-		process=TRUE;
+		break;
+	case SC_PAINT_BEGIN:
+		{
+			int fg,bg,fill;
+			fg=get_fg_color();
+			bg=get_bg_color();
+			fill=get_fill_char();
+			if(fg>=0)
+				img.set_fg(fg,img.cursor.x,img.cursor.y);
+			if(bg>=0)
+				img.set_bg(bg,img.cursor.x,img.cursor.y);
+			if(fill!=0)
+				img.set_char(fill,img.cursor.x,img.cursor.y);
+		}
+		break;
+	case SC_PAINT_MOVE:
+		{
+			int fg,bg,fill;
+			int ox,oy;
+			fg=get_fg_color();
+			bg=get_bg_color();
+			fill=get_fill_char();
+			ox=img.cursor.x;
+			oy=img.cursor.y;
+			switch(sc.vkey){
+			case VK_LEFT: img.move_cursor(-1,0); break;
+			case VK_RIGHT: img.move_cursor(1,0); break;
+			case VK_UP: img.move_cursor(0,-1); break;
+			case VK_DOWN: img.move_cursor(0,1); break;
+			default: break;
+			}
+			if(fg>=0){
+				img.set_fg(fg,ox,oy);
+				img.set_fg(fg,img.cursor.x,img.cursor.y);
+			}
+			if(bg>=0){
+				img.set_bg(bg,ox,oy);
+				img.set_bg(bg,img.cursor.x,img.cursor.y);
+			}
+			if(fill!=0){
+				img.set_char(fill,ox,oy);
+				img.set_char(fill,img.cursor.x,img.cursor.y);
+			}
+		}
 		break;
 	case SC_QUIT:
 		PostQuitMessage(0);
@@ -389,16 +409,12 @@ int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_retu
 			int x,y;
 			x=img.cursor.x;
 			y=img.cursor.y;
-			if(!handle_clip_key(img,vkey,ctrl,shift))
-				if(!handle_selection_key(img,vkey,ctrl,shift))
-					img.set_char(' ',x,y);
+			img.set_char(' ',x,y);
 		}
 		break;
 	case SC_RETURN:
-		if(!handle_clip_key(img,vkey,ctrl,shift)){
-			img.move_cursor(0,1);
-			img.clear_selection();
-		}
+		img.move_cursor(0,1);
+		img.clear_selection();
 		break;
 	case SC_CHK_FG:
 		toggle_check(hmaindlg,IDC_FG_CHK);
@@ -415,7 +431,6 @@ int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_retu
 			int key_char=sc.data;
 			x=img.cursor.x;
 			y=img.cursor.y;
-			//vkey=0x2580+rand()%10;
 			img.set_char(key_char,x,y);
 			img.set_fg(fg_color,x,y);
 			img.move_cursor(1,0);
@@ -437,7 +452,7 @@ int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_retu
 		   && img.selection_height()>0){
 			selection_to_clip(img);
 			memset(&img.selection,0,img.selection.sizeof);
-	   }else{
+		   }else{
 			string tmp;
 			if(img.clip.width>0 && img.clip.height>0)
 				tmp=img.get_clip_text();
@@ -446,16 +461,14 @@ int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_retu
 			if(tmp.length>0){
 				tmp~='\0';
 				copy_str_clipboard(tmp.ptr);
-				print_str_len(GetParent(hwnd),tmp.ptr);
+				print_str_len(hmaindlg,tmp.ptr);
 			}
-		}
+		   }
 		break;
 	case SC_PASTE:
-		if(!handle_clip_key(img,vkey,ctrl,shift)){
-			import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
-			img.is_modified=false;
-			PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
-		}
+		import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
+		img.is_modified=false;
+		PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
 		break;
 	case SC_SELECT_ALL:
 		img.selection.left=0;
@@ -480,49 +493,36 @@ int image_keydown(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam,ref int do_retu
 	default:
 		break;
 	}
-	if(process){
-		int x,y;
-		x=img.cursor.x;
-		y=img.cursor.y;
-		if(ctrl){
-			int is_inside_clip(int x,int y){
-				int cx,cy,cw,ch;
-				cx=img.clip.x;
-				cy=img.clip.y;
-				cw=img.clip.width;
-				ch=img.clip.height;
-				if(0==cw || 0==ch){
-					do_return=true;
-					return result;
-				}
-				if(x>=cx && x<(cx+cw)){
-					if(y>=cy && y<(cy+ch)){
-						do_return=true;
-						result=true;
-						return result;
-					}
-				}
-				return false;
-			}
-			int fg,bg;
-			fg=get_fg_color();
-			bg=get_bg_color();
-			if(fg>=0){
-				if(!is_inside_clip(ox,oy)){
-					img.set_fg(fg,ox,oy);
-					if(!is_inside_clip(x,y))
-						img.set_fg(fg,x,y);
-				}
-			}
-			if(bg>=0){
-				if(!is_inside_clip(ox,oy)){
-					img.set_bg(bg,ox,oy);
-					if(!is_inside_clip(x,y))
-						img.set_bg(bg,x,y);
-				}
-			}
-		}
+	return result;
+}
+int image_keydown(UINT msg,int vkey)
+{
+	int result=false;
+	bool ctrl=GetKeyState(VK_CONTROL)&0x8000;
+	bool shift=GetKeyState(VK_SHIFT)&0x8000;
+	bool alt=false;
+	IMAGE *img=get_current_image();
+	if(img is null)
+		return result;
+	if(msg==WM_SYSKEYDOWN)
+		alt=true;
+	if(handle_clip_key(img,vkey,ctrl,shift)){
+		result=true;
+		return result;
 	}
+	if(handle_selection_key(img,vkey,ctrl,shift)){
+		result=true;
+		return result;
+	}
+	SHORTCUT sc;
+	sc.vkey=vkey;
+	sc.ctrl=ctrl;
+	sc.shift=shift;
+	sc.alt=alt;
+	if(!get_shortcut_action(sc))
+		return result;
+	result=do_action(sc,img);
+
 	return result;
 }
 
@@ -562,6 +562,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						img.clip.x=img.cursor.x;
 						img.clip.y=img.cursor.y;
 					}
+					image_keydown(msg,VK_LBUTTON);
 				}
 				SetFocus(hwnd);
 				return 0;
@@ -579,14 +580,9 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			break;
 		case WM_CHAR:
 			break;
+		case WM_SYSKEYDOWN:
 		case WM_KEYDOWN:
-			{
-				int do_return=false;
-				int val;
-				val=image_keydown(hwnd,msg,wparam,lparam,do_return);
-				if(do_return)
-					return val;
-			}
+			image_keydown(msg,wparam);
 			break;
 		default:
 			break;
@@ -862,7 +858,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						DestroyWindow(hwnd);
 						PostQuitMessage(0);
 						break;
-					case IDC_FILE:
+					case IDC_MENU:
 						{
 							static HMENU hmenu=NULL;
 							if(!hmenu)

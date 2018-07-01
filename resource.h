@@ -23,7 +23,7 @@
 #define IDC_EXTC_SBAR                   1008
 #define IDC_TXT_APPDATA                 1009
 #define IDC_NO_INI                      1010
-#define IDC_FILE                        1010
+#define IDC_MENU                        1010
 #define IDC_GRIPPY                      1011
 #define IDC_FG_CHK                      1012
 #define IDC_BG_CHK                      1013
@@ -39,19 +39,24 @@
 #define IDC_DELETE                      1024
 #define IDC_CHAR                        1025
 #define IDC_FILL_CHK                    1027
-#define IDC_EDIT1                       1028
 #define IDC_HEXVAL                      1028
 #define IDM_SAVE                        40001
 #define IDM_COPYTOCLIP                  40002
 #define IDM_FILEOPEN                    40004
 #define IDM_SAVEAS                      40005
+#define ID_FILE_OPTIONS                 40006
+#define IDM_HOTKEYS                     40007
+#define ID_FILE_ASCIIMAP                40008
+#define IDM_ASCIIMAP                    40009
+#define ID_FILE_INSERTTEXT              40010
+#define IDM_INSERT_TEXT                 40011
 
 // Next default values for new objects
 // 
 #ifdef APSTUDIO_INVOKED
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        108
-#define _APS_NEXT_COMMAND_VALUE         40006
+#define _APS_NEXT_COMMAND_VALUE         40012
 #define _APS_NEXT_CONTROL_VALUE         1029
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
