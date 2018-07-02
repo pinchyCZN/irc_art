@@ -29,7 +29,6 @@ enum{COL_VAL=0,COL_CHAR=1,COL_KEY=2};
 struct SHORTCUT{
 	int action;
 	int vkey;
-	int key_char;
 	bool ctrl;
 	bool shift;
 	bool alt;
@@ -327,11 +326,21 @@ void fill_list(HWND hlview)
 		str[0]=cast(WCHAR)i;
 		str[1]=0;
 		ListView_SetItemText(hlview,index,1,str.ptr);
+		foreach(sc;sc_ascii){
+			if(sc.data==i){
+				wstring tmp=get_sc_key_text(sc);
+				tmp~='\0';
+				ListView_SetItemText(hlview,index,2,cast(wchar*)tmp.ptr);
+				break;
+			}
+		}
+
 		index++;
 
 	}
 	}catch(Exception s){
 	}
+	update_col_width(hlview,COL_KEY);
 }
 int get_focused_item(HWND hlistview)
 {
@@ -413,6 +422,21 @@ void update_col_width(HWND hlview,int col)
 	}catch(Exception e){
 	}
 }
+void update_ascii_map(const SHORTCUT sc)
+{
+	int found=false;
+	foreach(ref tmp;sc_ascii){
+		if(tmp.data==sc.data){
+			found=true;
+			tmp=sc;
+			break;
+		}
+	}
+	if(!found){
+		sc_ascii.length++;
+		sc_ascii[$-1]=sc;
+	}
+}
 void show_key_dlg(HWND hwnd,HWND hlview,int edit)
 {
 	int item=get_focused_item(hlview);
@@ -423,6 +447,7 @@ void show_key_dlg(HWND hwnd,HWND hlview,int edit)
 	if(get_shortcut_info(hlview,item,&scp)){
 		int r=DialogBoxParam(sc_param.hinstance,MAKEINTRESOURCE(IDD_SHORTCUT),hwnd,&dlg_enter_key,cast(LPARAM)&scp);
 		if(r){
+			update_ascii_map(scp.sc);
 			wstring str=get_sc_key_text(scp.sc);
 			str~='\0';
 			try{
@@ -473,13 +498,13 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			sc_param=*sc;
 		HWND hlview=GetDlgItem(hwnd,IDC_KEYLIST);
 		init_lview(hwnd,hlview);
+		HFONT hf=get_dejavu_font();
+		if(hf)
+			SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
 		fill_list(hlview);
 		init_grippy(hwnd,IDC_GRIPPY);
 		anchor_init(hwnd,keyshort_anchor);
 		restore_win_rel_position(sc_param.hparent,hwnd,keyshort_win_pos);
-		HFONT hf=get_dejavu_font();
-		if(hf)
-			SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
 		SetFocus(hlview);
 		break;
 	case WM_SIZE:
@@ -540,7 +565,7 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 	int result=FALSE;
 	WCHAR[40] tmp;
 	tmp[0]=0;
-	get_item_text(hlview,tmp,item,1);
+	get_item_text(hlview,tmp,item,COL_CHAR);
 	scp.sc.data=tmp[0];
 	memset(tmp.ptr,0,tmp.sizeof);
 	get_item_text(hlview,tmp,item,COL_KEY);
@@ -564,7 +589,6 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 	}
 	WCHAR *keyname=tmp.ptr+index;
 	scp.sc.vkey=0;
-	scp.sc.key_char=0;
 	foreach(c;keylist){
 		try
 		if(StrStrW(keyname,c.name.ptr)){
@@ -574,7 +598,7 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 		catch(Exception e){
 		}
 	}
-	if(scp.sc.vkey==0){
+	if(scp.sc.vkey==0 && (keyname[0]!=0)){
 		int get_hex_val(WCHAR a){
 			if(a>='0' && a<='9')
 				return a-'0';
@@ -582,9 +606,10 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 				return 10+a-'A';
 		}
 		if(keyname[0]=='0' && keyname[1]=='x'){
-			scp.sc.key_char=(get_hex_val(keyname[2])<<8)||get_hex_val(keyname[3]);
+			scp.sc.vkey=(get_hex_val(keyname[2])<<8)||get_hex_val(keyname[3]);
 		}else{
-			scp.sc.key_char=keyname[0];
+			DWORD val=OemKeyScan(keyname[0]);
+			scp.sc.vkey=MapVirtualKey(val&0xFFFF,MAPVK_VSC_TO_VK);
 		}
 	}
 	result=TRUE;
@@ -610,19 +635,6 @@ wstring get_sc_key_text(SHORTCUT sc)
 		}
 		if(!found)
 			tmp~=sc.vkey;
-	}else if(sc.key_char){
-		int found=false;
-		if(!(sc.key_char>=0x21 && sc.key_char<=0x7E)){
-			foreach(c;keylist){
-				if(c.val==sc.key_char){
-					tmp~=c.name;
-					found=true;
-					break;
-				}
-			}
-		}
-		if(!found)
-			tmp~=sc.key_char;
 	}
 	return tmp;
 }
@@ -645,9 +657,6 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
-	case WM_CREATE:
-		memset(&sc,0,sc.sizeof);
-		break;
 	case WM_GETDLGCODE:
 		{
 			int key=wparam;
@@ -680,7 +689,7 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						sc.vkey=key;
 					}
 				}else if(key==VK_RETURN){
-					if(sc.vkey==0 && sc.key_char==0)
+					if(sc.vkey==0)
 						sc.vkey=key;
 					else{
 						SendMessage(GetParent(hwnd),WM_COMMAND,MAKEWPARAM(IDOK,0),0);
@@ -690,36 +699,23 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					sc.vkey=key;
 				}
 			}
-			sc.key_char=0;
 			print_key(sc,hwnd);
 		}
 		return 0;
 		break;
 	case WM_CHAR:
-		{
-			int key=wparam;
-			if(key==VK_ESCAPE
-			   || key==' '
-			   || key==VK_RETURN
-			   || key==VK_BACK
-			   || key==VK_TAB){
-				print_key(sc,hwnd);
-				return 0;
-			}
-			if(key>=0x21 && key<=0x7E){
-				sc.vkey=0;
-				sc.key_char=key;
-			}
-			print_key(sc,hwnd);
-		}
 		return 0;
 		break;
 	case WM_APP:
 		if(wparam==0){
 			if(lparam!=0){
 				SHORTCUT *ptr=cast(SHORTCUT*)lparam;
-				 *ptr=sc;
+				WCHAR tmp=ptr.data;
+				*ptr=sc;
+				ptr.data=tmp;
 			}
+		}else if(wparam==1){
+			memset(&sc,0,sc.sizeof);
 		}
 		break;
 	default:
@@ -755,6 +751,7 @@ BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				WCHAR[20] tmp;
 				print_hex(tmp,scp.sc.data);
 				SetDlgItemText(hwnd,IDC_HEXVAL,tmp.ptr);
+				SendMessage(hedit,WM_APP,1,0);
 			}
 		}
 		break;
@@ -789,17 +786,15 @@ int compare_sc(const SHORTCUT a,const SHORTCUT b)
 		result=true;
 	return result;
 }
-int process_ascii_map(int char_code,ref SHORTCUT sc)
+int process_ascii_map(ref SHORTCUT sc)
 {
 	int result=false;
 	foreach(c;sc_ascii){
 		if(compare_sc(c,sc)){
-			if(char_code==sc.key_char){
-				result=true;
-				sc.action=SC_ASCII;
-				sc.data=c.data;
-				break;
-			}
+			result=true;
+			sc.action=SC_ASCII;
+			sc.data=c.data;
+			break;
 		}
 	}
 	return result;
@@ -815,10 +810,10 @@ int get_shortcut_action(ref SHORTCUT sc)
 		}
 	}
 	if(!result){
-		int char_code=MapVirtualKey(sc.vkey,MAPVK_VK_TO_CHAR);
-		if(char_code!=0){
-			result=process_ascii_map(char_code,sc);
-			if(!result){
+		result=process_ascii_map(sc);
+		if(!result){
+			int char_code=MapVirtualKey(sc.vkey,MAPVK_VK_TO_CHAR);
+			if(char_code!=0){
 				import core.stdc.ctype;
 				int caps=GetKeyState(VK_CAPITAL)&1;
 				if(sc.shift){
@@ -841,7 +836,6 @@ int get_shortcut_action(ref SHORTCUT sc)
 				sc.data=cast(WCHAR)char_code;
 				result=true;
 			}
-			return result;
 		}
 	}
 	return result;

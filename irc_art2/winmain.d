@@ -316,7 +316,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		{
 			TEXT_PARAMS tp;
 			tp.hparent=hmaindlg;
-			tp.img=get_current_image();
+			tp.img=img;
 			tp.fg=&get_fg_color;
 			tp.bg=&get_bg_color;
 			tp.fill_char=&get_fill_char;
@@ -852,6 +852,20 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 								tmp~='\0';
 								print_str_len(hwnd,tmp.ptr);
 							}
+						}
+						break;
+					case IDM_INSERT_TEXT:
+						{
+							SHORTCUT sc;
+							sc.action=SC_OPEN_TEXT_DLG;
+							do_action(sc,get_current_image());
+						}
+						break;
+					case IDM_ASCIIMAP:
+						{
+							SHORTCUT sc;
+							sc.action=SC_OPEN_CHAR_SC_DLG;
+							do_action(sc,get_current_image());
 						}
 						break;
 					case IDCANCEL:
