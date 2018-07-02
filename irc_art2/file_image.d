@@ -506,6 +506,6 @@ void print_str_len(HWND hparent,const char *str)
 {
 	int len=get_max_line_len(str);
 	char[80] tmp;
-	_snprintf(tmp.ptr,tmp.length,"copied tmp max len=%i",len);
+	_snprintf(tmp.ptr,tmp.length,"copied string max len=%i",len);
 	SetDlgItemTextA(hparent,IDC_STATUS,tmp.ptr);
 }
