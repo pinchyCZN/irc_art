@@ -168,6 +168,12 @@ nothrow:
 		int index=x+y*width;
 		return cells[index].bg;
 	}
+	int get_char(int x,int y){
+		if(!is_valid_pos(x,y))
+			return 0;
+		int index=x+y*width;
+		return cells[index].val;
+	}
 	void move_cursor(int x,int y){
 		cursor.x+=x;
 		cursor.y+=y;
@@ -602,6 +608,105 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg,int fill)
 	img.is_modified=true;
 }
 
+void fill_area(IMAGE *img,int fg,int bg,int fill_char)
+{
+	int obg,ofg,ochar;
+	void append_row_pos(ref POINT[] list,int x,int y){
+		if(!img.is_valid_pos(x,y))
+			return;
+		foreach(p;list){
+			int delta=abs(p.x-x);
+			if(p.y==y){
+				if(delta<=1)
+					return;
+			}
+		}
+		POINT tmp={x,y};
+		list~=tmp;
+	}
+	int needs_fill(int x,int y){
+		int result=false;
+		if(!img.is_valid_pos(x,y))
+			return result;
+		int cbg,cfg,cchar;
+		cbg=img.get_bg(x,y);
+		cfg=img.get_bg(x,y);
+		cchar=img.get_char(x,y);
+		if(bg>=0){
+			if(cbg==obg)
+				result=true;
+		}
+		return result;
+	}
+	void fill_line(int sx,int sy,ref POINT[] neighbor){
+		int j,len;
+		len=img.width-sx;
+		for(j=0;j<len;j++){
+			int xpos,ypos;
+			xpos=sx+j;
+			ypos=sy;
+			if(!img.is_valid_pos(xpos,ypos))
+				continue;
+			if(bg>=0){
+				if(img.get_bg(xpos,ypos)==obg){
+					img.set_bg(bg,xpos,ypos);
+					if(needs_fill(xpos,ypos-1))
+						append_row_pos(neighbor,xpos,ypos-1);
+					if(needs_fill(xpos,ypos+1))
+						append_row_pos(neighbor,xpos,ypos+1);
+				}
+				else
+					break;
+			}
+			else if(fg>=0){
+				if(img.get_fg(xpos,ypos)==ofg)
+					img.set_fg(fg,xpos,ypos);
+				else
+					break;
+			}else if(fill_char!=0){
+			}
+		}
+	}
+	int get_row_start(int cx,int cy){
+		int i,xpos=-1;
+		for(i=cx;i>=0;i--){
+			if(!img.is_valid_pos(i,cy))
+				continue;
+			int tmp=img.get_bg(i,cy);
+			if(bg>=0){
+				if(obg!=tmp){
+					xpos=i+1;
+					break;
+				}
+			}
+		}
+		return xpos;
+	}
+	int y;
+	int cx,cy;
+	POINT[] list;
+	cx=img.cursor.x;
+	cy=img.cursor.y;
+	obg=img.get_bg(cx,cy);
+	ofg=img.get_fg(cx,cy);
+	ochar=img.get_char(cx,cy);
+	for(y=cy;y>=0;y--){
+		int sx=get_row_start(cx,y);
+		list.length=0;
+		fill_line(sx,y,list);
+		POINT[] tmp;
+		foreach(p;list){
+			int tx=get_row_start(p.x,p.y);
+			fill_line(tx,p.y,tmp);
+		}
+		list.length=0;
+		foreach(p;tmp){
+			int tx=get_row_start(p.x,p.y);
+			fill_line(tx,p.y,list);
+		}
+		list.length=0;
+	}
+}
 void do_fill(IMAGE *img,int fg,int bg,int fill_char)
 {
 	if(img is null)
@@ -610,7 +715,7 @@ void do_fill(IMAGE *img,int fg,int bg,int fill_char)
 	sw=img.selection_width();
 	sh=img.selection_height();
 	if(sw<=0 || sh<=0){
-
+		fill_area(img,fg,bg,fill_char);		
 	}else{
 		int i,j;
 		for(i=0;i<sh;i++){
