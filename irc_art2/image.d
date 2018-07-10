@@ -615,9 +615,15 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 		if(!img.is_valid_pos(x,y))
 			return;
 		foreach(p;list){
-			int delta=abs(p.x-x);
-			if(p.y==y){
-				if(delta<=1)
+			if(p.y==y && p.x<x){
+				int i,complete=true;
+				for(i=p.x;i<x;i++){
+					if(obg!=img.get_bg(i,y)){
+						complete=false;
+						break;
+					}
+				}
+				if(complete)
 					return;
 			}
 		}
@@ -646,7 +652,7 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 			xpos=sx+j;
 			ypos=sy;
 			if(!img.is_valid_pos(xpos,ypos))
-				continue;
+				break;
 			if(bg>=0){
 				if(img.get_bg(xpos,ypos)==obg){
 					img.set_bg(bg,xpos,ypos);
@@ -690,10 +696,11 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 	obg=img.get_bg(cx,cy);
 	ofg=img.get_fg(cx,cy);
 	ochar=img.get_char(cx,cy);
-	for(y=cy;y>=0;y--){
-		int sx=get_row_start(cx,y);
-		list.length=0;
-		fill_line(sx,y,list);
+	POINT _p;
+	_p.x=get_row_start(cx,cy);
+	_p.y=cy;
+	list~=_p;
+	while(list.length!=0){
 		POINT[] tmp;
 		foreach(p;list){
 			int tx=get_row_start(p.x,p.y);
@@ -704,7 +711,6 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 			int tx=get_row_start(p.x,p.y);
 			fill_line(tx,p.y,list);
 		}
-		list.length=0;
 	}
 }
 void do_fill(IMAGE *img,int fg,int bg,int fill_char)

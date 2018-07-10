@@ -762,6 +762,26 @@ void update_status(HWND hwnd)
 	tmp[$-1]=0;
 	SetWindowTextA(hstatus,tmp.ptr);
 }
+void do_shit(HWND hwnd)
+{
+	IMAGE *img=get_current_image();
+	//img.resize_image(8,10);
+	CheckDlgButton(hwnd,IDC_BG_CHK,BST_CHECKED);
+	bg_color=9;
+	img.cursor.x=4;
+	img.cursor.y=3;
+	return;
+	int i;
+	for(i=0;i<3;i++){
+		img.set_bg(9,2+i,1);
+		img.set_bg(9,2+i,8);
+	}
+	for(i=0;i<6;i++){
+		img.set_bg(9,1,2+i);
+		img.set_bg(9,5,2+i);
+	}
+
+}
 extern(Windows)
 BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
@@ -774,6 +794,7 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			anchor_init(hwnd,main_win_anchor);
 			init_grippy(hwnd,IDC_GRIPPY);
 			init_image();
+			do_shit(hwnd);
 			display_image_size(hwnd);
 			update_status(hwnd);
 			himage=GetDlgItem(hwnd,IDC_IMAGE);
