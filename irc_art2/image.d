@@ -111,6 +111,7 @@ nothrow:
 	int height;
 	int cell_width=8,cell_height=12;
 	int is_modified;
+	DWORD time;
 	POINT cursor;
 	RECT selection;
 	wstring fname;
@@ -246,9 +247,44 @@ nothrow:
 	}
 };
 IMAGE[] images;
+IMAGE[] undo_buffer;
 int current_image=0;
 ubyte[] vgargb;
 
+void push_undo_time(IMAGE *img)
+{
+	DWORD delta,tick=GetTickCount();
+	delta=tick-img.time;
+	if(delta>3000){
+		img.time=tick;
+		push_undo(img);
+	}
+}
+void push_undo(IMAGE *img)
+{
+	enum MAX_UNDO=500;
+	enum UNDO_WINDOW=MAX_UNDO/5;
+	undo_buffer~=*img;
+	undo_buffer[$-1].cells=img.cells.dup;
+	if(undo_buffer.length>=MAX_UNDO){
+		import std.algorithm.mutation;
+		import std.typecons;
+		int i;
+		for(i=0;i<UNDO_WINDOW;i++){
+			undo_buffer[i].cells.length=0;
+		}
+		undo_buffer=remove(undo_buffer,tuple(0,UNDO_WINDOW));
+	}
+}
+void pop_undo(IMAGE *img)
+{
+	if(undo_buffer.length==0)
+		return;
+	img.cells.length=0;
+	*img=undo_buffer[$-1];
+	undo_buffer.length-=1;
+	img.is_modified=true;
+}
 IMAGE *get_current_image()
 {
 	if(current_image<0 || current_image>=images.length){

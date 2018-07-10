@@ -359,6 +359,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_PAINT_BEGIN:
 		{
+			push_undo(img);
 			int fg,bg,fill;
 			fg=get_fg_color();
 			bg=get_bg_color();
@@ -373,6 +374,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_PAINT_MOVE:
 		{
+			push_undo_time(img);
 			int fg,bg,fill;
 			int ox,oy;
 			fg=get_fg_color();
@@ -406,6 +408,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_DELETE:
 		{
+			push_undo(img);
 			int x,y;
 			x=img.cursor.x;
 			y=img.cursor.y;
@@ -427,6 +430,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_ASCII:
 		{
+			push_undo_time(img);
 			int x,y;
 			int key_char=sc.data;
 			x=img.cursor.x;
@@ -439,6 +443,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_BACKSPACE:
 		{
+			push_undo_time(img);
 			int x,y;
 			img.move_cursor(-1,0);
 			x=img.cursor.x;
@@ -446,6 +451,9 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			img.set_char(' ',x,y);
 			img.clear_selection();
 		}
+		break;
+	case SC_UNDO:
+		pop_undo(img);
 		break;
 	case SC_COPY:
 		if(img.selection_width()>0
@@ -466,6 +474,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		   }
 		break;
 	case SC_PASTE:
+		push_undo(img);
 		import_clipboard(hmaindlg,*img,FALSE,get_fg_color(),get_bg_color());
 		img.is_modified=false;
 		PostMessage(hmaindlg,WM_APP,APP_REFRESH,0);
@@ -481,6 +490,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		flip_clip(img);
 		break;
 	case SC_FILL:
+		push_undo(img);
 		do_fill(img,get_fg_color(),get_bg_color(),get_fill_char());
 		break;
 	case SC_ROTATE:
@@ -530,7 +540,7 @@ WNDPROC old_image_proc=NULL;
 extern (Windows)
 BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(_DEBUG) {
+	version(M_DEBUG) {
 	if(msg!=WM_SETCURSOR && msg!=WM_MOUSEFIRST && msg!=WM_NCHITTEST && msg!=WM_PAINT){
 		printf(">");
 		print_msg(msg,wparam,lparam,hwnd);
