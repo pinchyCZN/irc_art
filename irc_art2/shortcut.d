@@ -41,6 +41,7 @@ struct SHORTCUT_PARAM{
 enum{
 	SC_ASCII=0,
 	SC_UNDO,
+	SC_REDO,
 	SC_COPY,
 	SC_PASTE,
 	SC_PASTE_INTO_SELECTION,
@@ -74,6 +75,7 @@ SHORTCUT[] sc_map=[
 	{action:SC_OPEN_CHAR_SC_DLG,vkey:VK_INSERT,ctrl:true},
 	{action:SC_OPEN_FUNC_SC_DLG,vkey:VK_F12},
 	{action:SC_UNDO,vkey:'Z',ctrl:true},
+	{action:SC_REDO,vkey:'Y',ctrl:true},
 	{action:SC_COPY,vkey:'C',ctrl:true},
 	{action:SC_PASTE,vkey:'V',ctrl:true},
 	{action:SC_PASTE_INTO_SELECTION,vkey:'V',ctrl:true,shift:true},

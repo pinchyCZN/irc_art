@@ -248,6 +248,7 @@ nothrow:
 };
 IMAGE[] images;
 IMAGE[] undo_buffer;
+uint undo_pos=0;
 int current_image=0;
 ubyte[] vgargb;
 
@@ -264,8 +265,17 @@ void push_undo(IMAGE *img)
 {
 	enum MAX_UNDO=500;
 	enum UNDO_WINDOW=MAX_UNDO/5;
-	undo_buffer~=*img;
-	undo_buffer[$-1].cells=img.cells.dup;
+	if(undo_pos>=undo_buffer.length){
+		undo_buffer~=*img;
+		undo_buffer[$-1].cells=img.cells.dup;
+		undo_pos=undo_buffer.length;
+	}else{
+		undo_buffer[undo_pos].cells.length=0;
+		undo_buffer[undo_pos]=*img;
+		undo_buffer[undo_pos].cells=img.cells.dup;
+		undo_pos++;
+	}
+	/*
 	if(undo_buffer.length>=MAX_UNDO){
 		import std.algorithm.mutation;
 		import std.typecons;
@@ -275,15 +285,37 @@ void push_undo(IMAGE *img)
 		}
 		undo_buffer=remove(undo_buffer,tuple(0,UNDO_WINDOW));
 	}
+	*/
 }
 void pop_undo(IMAGE *img)
 {
-	if(undo_buffer.length==0)
+	if(undo_buffer.length==0){
+		undo_pos=0;
 		return;
-	img.cells.length=0;
-	*img=undo_buffer[$-1];
-	undo_buffer.length-=1;
-	img.is_modified=true;
+	}
+	if(undo_pos==0)
+		return;
+	if(undo_pos<=undo_buffer.length){
+		uint index=undo_pos-1;
+		img.cells.length=0;
+		*img=undo_buffer[index];
+		img.is_modified=true;
+		undo_pos--;
+	}
+}
+void redo(IMAGE *img)
+{
+	if(undo_buffer.length==0){
+		undo_pos=0;
+		return;
+	}
+	if(undo_pos<undo_buffer.length){
+		uint index=undo_pos;
+		img.cells.length=0;
+		*img=undo_buffer[index];
+		img.is_modified=true;
+		undo_pos++;
+	}
 }
 IMAGE *get_current_image()
 {

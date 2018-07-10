@@ -188,6 +188,7 @@ int handle_clip_key(IMAGE *img,int vkey,int ctrl,int shift)
 	case 'V':
 	case VK_RETURN:
 		{
+			push_undo(img);
 			int x,y;
 			for(y=0;y<img.clip.height;y++){
 				for(x=0;x<img.clip.width;x++){
@@ -454,6 +455,9 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_UNDO:
 		pop_undo(img);
+		break;
+	case SC_REDO:
+		redo(img);
 		break;
 	case SC_COPY:
 		if(img.selection_width()>0
