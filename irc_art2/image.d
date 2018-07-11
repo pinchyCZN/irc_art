@@ -248,7 +248,7 @@ nothrow:
 };
 IMAGE[] images;
 IMAGE[] undo_buffer;
-uint undo_pos=0;
+IMAGE[] redo_buffer;
 int current_image=0;
 ubyte[] vgargb;
 
@@ -265,17 +265,8 @@ void push_undo(IMAGE *img)
 {
 	enum MAX_UNDO=500;
 	enum UNDO_WINDOW=MAX_UNDO/5;
-	if(undo_pos>=undo_buffer.length){
-		undo_buffer~=*img;
-		undo_buffer[$-1].cells=img.cells.dup;
-		undo_pos=undo_buffer.length;
-	}else{
-		undo_buffer[undo_pos].cells.length=0;
-		undo_buffer[undo_pos]=*img;
-		undo_buffer[undo_pos].cells=img.cells.dup;
-		undo_pos++;
-	}
-	/*
+	undo_buffer~=*img;
+	undo_buffer[$-1].cells=img.cells.dup;
 	if(undo_buffer.length>=MAX_UNDO){
 		import std.algorithm.mutation;
 		import std.typecons;
@@ -285,37 +276,34 @@ void push_undo(IMAGE *img)
 		}
 		undo_buffer=remove(undo_buffer,tuple(0,UNDO_WINDOW));
 	}
-	*/
+	if(redo_buffer.length>0){
+		redo_buffer[$-1].cells.length=0;
+		redo_buffer.length-=1;
+	}
 }
 void pop_undo(IMAGE *img)
 {
-	if(undo_buffer.length==0){
-		undo_pos=0;
+	if(undo_buffer.length==0)
 		return;
-	}
-	if(undo_pos==0)
-		return;
-	if(undo_pos<=undo_buffer.length){
-		uint index=undo_pos-1;
-		img.cells.length=0;
-		*img=undo_buffer[index];
-		img.is_modified=true;
-		undo_pos--;
-	}
+	redo_buffer~=*img;
+	redo_buffer[$-1].cells=img.cells.dup;
+	img.cells.length=0;
+
+	*img=undo_buffer[$-1];
+	undo_buffer.length-=1;
+	img.is_modified=true;
 }
 void redo(IMAGE *img)
 {
-	if(undo_buffer.length==0){
-		undo_pos=0;
+	if(redo_buffer.length==0)
 		return;
-	}
-	if(undo_pos<undo_buffer.length){
-		uint index=undo_pos;
-		img.cells.length=0;
-		*img=undo_buffer[index];
-		img.is_modified=true;
-		undo_pos++;
-	}
+	undo_buffer~=*img;
+	undo_buffer[$-1].cells=img.cells.dup;
+	img.cells.length=0;
+
+	*img=redo_buffer[$-1];
+	redo_buffer.length-=1;
+	img.is_modified=true;
 }
 IMAGE *get_current_image()
 {
@@ -686,9 +674,21 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 			if(p.y==y && p.x<x){
 				int i,complete=true;
 				for(i=p.x;i<x;i++){
-					if(obg!=img.get_bg(i,y)){
-						complete=false;
-						break;
+					if(bg>=0){
+						if(obg!=img.get_bg(i,y)){
+							complete=false;
+							break;
+						}
+					}else if(fg>=0){
+						if(ofg!=img.get_fg(i,y)){
+							complete=false;
+							break;
+						}
+					}else if(fill_char!=0){
+						if(ochar!=img.get_char(i,y)){
+							complete=false;
+							break;
+						}
 					}
 				}
 				if(complete)
@@ -704,13 +704,25 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 			return result;
 		int cbg,cfg,cchar;
 		cbg=img.get_bg(x,y);
-		cfg=img.get_bg(x,y);
+		cfg=img.get_fg(x,y);
 		cchar=img.get_char(x,y);
 		if(bg>=0){
-			if(cbg==obg)
+			if(cbg==obg && cbg!=bg)
+				result=true;
+		}else if(fg>=0){
+			if(cfg==ofg && cfg!=fg)
+				result=true;
+		}else if(fill_char!=0){
+			if(cchar==ochar && cchar!=fill_char)
 				result=true;
 		}
 		return result;
+	}
+	void check_neighbor(ref POINT[] neighbor,int xpos,int ypos){
+		if(needs_fill(xpos,ypos-1))
+			append_row_pos(neighbor,xpos,ypos-1);
+		if(needs_fill(xpos,ypos+1))
+			append_row_pos(neighbor,xpos,ypos+1);
 	}
 	void fill_line(int sx,int sy,ref POINT[] neighbor){
 		int j,len;
@@ -722,22 +734,30 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 			if(!img.is_valid_pos(xpos,ypos))
 				break;
 			if(bg>=0){
-				if(img.get_bg(xpos,ypos)==obg){
+				int tbg=img.get_bg(xpos,ypos);
+				if(tbg==obg && (tbg!=bg)){
 					img.set_bg(bg,xpos,ypos);
-					if(needs_fill(xpos,ypos-1))
-						append_row_pos(neighbor,xpos,ypos-1);
-					if(needs_fill(xpos,ypos+1))
-						append_row_pos(neighbor,xpos,ypos+1);
+					check_neighbor(neighbor,xpos,ypos);
 				}
 				else
 					break;
 			}
 			else if(fg>=0){
-				if(img.get_fg(xpos,ypos)==ofg)
+				int tfg=img.get_fg(xpos,ypos);
+				if(tfg==ofg && (tfg!=fg)){
 					img.set_fg(fg,xpos,ypos);
+					check_neighbor(neighbor,xpos,ypos);
+				}
 				else
 					break;
 			}else if(fill_char!=0){
+				int tchar=img.get_char(xpos,ypos);
+				if(tchar==ochar && (tchar!=fill_char)){
+					img.set_char(fill_char,xpos,ypos);
+					check_neighbor(neighbor,xpos,ypos);
+				}
+				else
+					break;
 			}
 		}
 	}
@@ -746,9 +766,21 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 		for(i=cx;i>=0;i--){
 			if(!img.is_valid_pos(i,cy))
 				continue;
-			int tmp=img.get_bg(i,cy);
 			if(bg>=0){
-				if(obg!=tmp){
+				int tbg=img.get_bg(i,cy);
+				if(obg!=tbg){
+					xpos=i+1;
+					break;
+				}
+			}else if(fg>=0){
+				int tfg=img.get_fg(i,cy);
+				if(ofg!=tfg){
+					xpos=i+1;
+					break;
+				}
+			}else if(fill_char!=0){
+				int tchar=img.get_char(i,cy);
+				if(ochar!=tchar){
 					xpos=i+1;
 					break;
 				}
