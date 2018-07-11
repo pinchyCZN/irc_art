@@ -679,12 +679,14 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 							complete=false;
 							break;
 						}
-					}else if(fg>=0){
+					}
+					if(fg>=0){
 						if(ofg!=img.get_fg(i,y)){
 							complete=false;
 							break;
 						}
-					}else if(fill_char!=0){
+					}
+					if(fill_char!=0){
 						if(ochar!=img.get_char(i,y)){
 							complete=false;
 							break;
@@ -709,10 +711,12 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 		if(bg>=0){
 			if(cbg==obg && cbg!=bg)
 				result=true;
-		}else if(fg>=0){
+		}
+		if(fg>=0){
 			if(cfg==ofg && cfg!=fg)
 				result=true;
-		}else if(fill_char!=0){
+		}
+		if(fill_char!=0){
 			if(cchar==ochar && cchar!=fill_char)
 				result=true;
 		}
@@ -742,7 +746,7 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 				else
 					break;
 			}
-			else if(fg>=0){
+			if(fg>=0){
 				int tfg=img.get_fg(xpos,ypos);
 				if(tfg==ofg && (tfg!=fg)){
 					img.set_fg(fg,xpos,ypos);
@@ -750,7 +754,8 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 				}
 				else
 					break;
-			}else if(fill_char!=0){
+			}
+			if(fill_char!=0){
 				int tchar=img.get_char(xpos,ypos);
 				if(tchar==ochar && (tchar!=fill_char)){
 					img.set_char(fill_char,xpos,ypos);
@@ -772,13 +777,13 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 					xpos=i+1;
 					break;
 				}
-			}else if(fg>=0){
+			}if(fg>=0){
 				int tfg=img.get_fg(i,cy);
 				if(ofg!=tfg){
 					xpos=i+1;
 					break;
 				}
-			}else if(fill_char!=0){
+			}if(fill_char!=0){
 				int tchar=img.get_char(i,cy);
 				if(ochar!=tchar){
 					xpos=i+1;
@@ -790,26 +795,39 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 	}
 	int y;
 	int cx,cy;
-	POINT[] list;
+	struct PARAMS{
+		int fg,bg,fill_char;
+	}
+	PARAMS[3] params=[
+		{fg,-1,0},
+		{-1,bg,0},
+		{-1,-1,fill_char}
+	];
 	cx=img.cursor.x;
 	cy=img.cursor.y;
 	obg=img.get_bg(cx,cy);
 	ofg=img.get_fg(cx,cy);
 	ochar=img.get_char(cx,cy);
-	POINT _p;
-	_p.x=get_row_start(cx,cy);
-	_p.y=cy;
-	list~=_p;
-	while(list.length!=0){
-		POINT[] tmp;
-		foreach(p;list){
-			int tx=get_row_start(p.x,p.y);
-			fill_line(tx,p.y,tmp);
-		}
-		list.length=0;
-		foreach(p;tmp){
-			int tx=get_row_start(p.x,p.y);
-			fill_line(tx,p.y,list);
+	foreach(param;params){
+		fg=param.fg;
+		bg=param.bg;
+		fill_char=param.fill_char;
+		POINT[] list;
+		POINT _p;
+		_p.x=get_row_start(cx,cy);
+		_p.y=cy;
+		list~=_p;
+		while(list.length!=0){
+			POINT[] tmp;
+			foreach(p;list){
+				int tx=get_row_start(p.x,p.y);
+				fill_line(tx,p.y,tmp);
+			}
+			list.length=0;
+			foreach(p;tmp){
+				int tx=get_row_start(p.x,p.y);
+				fill_line(tx,p.y,list);
+			}
 		}
 	}
 }
