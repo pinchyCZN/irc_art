@@ -113,6 +113,7 @@ nothrow:
 	int is_modified;
 	DWORD time;
 	POINT cursor;
+	POINT pre_click;
 	RECT selection;
 	wstring fname;
 	int cursor_in_clip(){
@@ -363,6 +364,8 @@ int image_click(IMAGE *img,int x,int y)
 		return result;
 	if((img.cursor.x != x) || (img.cursor.y != y))
 		img.is_modified=true;
+	img.pre_click.x=img.cursor.x;
+	img.pre_click.y=img.cursor.y;
 	img.cursor.x=x;
 	img.cursor.y=y;
 	result=true;

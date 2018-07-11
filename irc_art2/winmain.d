@@ -373,6 +373,10 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 				img.set_char(fill,img.cursor.x,img.cursor.y);
 		}
 		break;
+	case SC_PAINT_LINE_TO:
+		push_undo(img);
+		draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,get_fg_color(),get_bg_color(),get_fill_char());
+		break;
 	case SC_PAINT_MOVE:
 		{
 			push_undo_time(img);
