@@ -113,6 +113,7 @@ nothrow:
 	int is_modified;
 	DWORD time;
 	POINT cursor;
+	POINT mouse;
 	POINT pre_click;
 	RECT selection;
 	wstring fname;
@@ -352,15 +353,16 @@ void create_vga_font()
 	}
 }
 
-int image_click(IMAGE *img,int x,int y)
+int image_click(IMAGE *img,int ox,int oy)
 {
 	int result=false;
+	int x,y;
 	if(img is null)
 		return result;
 	if(0==img.cell_width || 0==img.cell_height)
 		return result;
-	x=x/img.cell_width;
-	y=y/img.cell_height;
+	x=ox/img.cell_width;
+	y=oy/img.cell_height;
 	if(x>=img.width || y>=img.height)
 		return result;
 	if((img.cursor.x != x) || (img.cursor.y != y))
@@ -369,6 +371,8 @@ int image_click(IMAGE *img,int x,int y)
 	img.pre_click.y=img.cursor.y;
 	img.cursor.x=x;
 	img.cursor.y=y;
+	img.mouse.x=ox;
+	img.mouse.y=oy;
 	result=true;
 	return result;
 }

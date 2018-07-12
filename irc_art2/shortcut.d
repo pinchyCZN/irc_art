@@ -67,6 +67,7 @@ enum{
 	SC_PAINT_BEGIN,
 	SC_PAINT_MOVE,
 	SC_PAINT_LINE_TO,
+	SC_PAINT_QUARTER,
 	SC_QUIT,
 	SC_NONE,
 }
@@ -102,6 +103,7 @@ SHORTCUT[] sc_map=[
 	{action:SC_PAINT_MOVE,vkey:VK_DOWN,ctrl:true},
 	{action:SC_PAINT_MOVE,vkey:VK_LEFT,ctrl:true},
 	{action:SC_PAINT_MOVE,vkey:VK_RIGHT,ctrl:true},
+	{action:SC_PAINT_QUARTER,vkey:VK_LBUTTON,alt:true},
 ];
 SHORTCUT[] sc_ascii;
 
