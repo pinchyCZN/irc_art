@@ -161,8 +161,8 @@
   <ccTransOpt>1</ccTransOpt>
   <addDepImp>0</addDepImp>
   <program>$(DMDInstallDir)windows\bin\dmd.exe</program>
-  <imppath />
-  <fileImppath />
+  <imppath>.\fonts</imppath>
+  <fileImppath>.\fonts</fileImppath>
   <outdir>$(PlatformName)\$(ConfigurationName)</outdir>
   <objdir>$(OutDir)</objdir>
   <objname />
@@ -198,10 +198,10 @@
   <cv2pdbOptions />
   <objfiles />
   <linkswitches />
-  <libfiles>ole32.lib kernel32.lib user32.lib comctl32.lib comdlg32.lib</libfiles>
+  <libfiles>gdi32.lib ole32.lib kernel32.lib user32.lib comctl32.lib comdlg32.lib</libfiles>
   <libpaths />
-  <deffile />
-  <resfile />
+  <deffile>$(SolutionDir)\win_link.def</deffile>
+  <resfile>$(SolutionDir)\Release\resource.res</resfile>
   <exefile>$(OutDir)\$(ProjectName).exe</exefile>
   <pdbfile>$(IntDir)\$(SafeProjectName).pdb</pdbfile>
   <impfile>$(IntDir)\$(SafeProjectName).lib</impfile>

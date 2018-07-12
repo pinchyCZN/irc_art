@@ -409,7 +409,11 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		}
 		break;
 	case SC_QUIT:
-		PostQuitMessage(0);
+		version(_DEBUG){
+			PostQuitMessage(0);
+		}else{
+			img.clear_clip();
+		}
 		break;
 	case SC_DELETE:
 		{
@@ -786,9 +790,13 @@ void do_shit(HWND hwnd)
 	//img.resize_image(8,10);
 	CheckDlgButton(hwnd,IDC_BG_CHK,BST_CHECKED);
 	bg_color=9;
-	img.cursor.x=4;
-	img.cursor.y=3;
-	return;
+	version(_DEBUG){
+		img.cursor.x=4;
+		img.cursor.y=3;
+		return;
+	}else{
+		return;
+	}
 	int i;
 	for(i=0;i<3;i++){
 		img.set_bg(9,2+i,1);

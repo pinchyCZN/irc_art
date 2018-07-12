@@ -239,6 +239,7 @@ nothrow:
 		clip.cells.length=0;
 		clip.width=0;
 		clip.height=0;
+		is_modified=true;
 	}
 	string get_text(){
 		return get_text_cells(cells,width,height);
