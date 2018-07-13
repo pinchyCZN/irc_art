@@ -375,6 +375,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_PAINT_QUARTER:
 		{
+			draw_qblock(img);
 		}
 		break;
 	case SC_PAINT_LINE_TO:
@@ -532,6 +533,8 @@ int image_keydown(UINT msg,int vkey)
 		return result;
 	if(msg==WM_SYSKEYDOWN)
 		alt=true;
+	else if(msg==WM_LBUTTONDOWN)
+		alt=GetKeyState(VK_MENU)&0x8000;
 	if(handle_clip_key(img,vkey,ctrl,shift)){
 		result=true;
 		return result;

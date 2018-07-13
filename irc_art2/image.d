@@ -3,6 +3,7 @@ module image;
 import core.sys.windows.windows;
 import core.stdc.stdlib;
 import core.stdc.string;
+import qblock;
 
 nothrow:
 struct CELL{
@@ -919,6 +920,20 @@ void flip_clip(IMAGE *img)
 		}
 	}
 	img.clip=clip;
+	img.is_modified=true;
+}
+void draw_qblock(IMAGE *img)
+{
+	if(img is null)
+		return;
+	int rx,ry;
+	rx=img.mouse.x%img.cell_width;
+	ry=img.mouse.y%img.cell_height;
+	import core.stdc.stdio;
+	printf("x,y=%i,%i\n",rx,ry);
+	int element=img.get_char(img.cursor.x,img.cursor.y);
+	element=get_qblock(rx,img.cell_width,ry,img.cell_height,element);
+	img.set_char(element,img.cursor.x,img.cursor.y);
 	img.is_modified=true;
 }
 void init_image()
