@@ -250,7 +250,7 @@ ubyte[8] get_qblock_bits(int element)
 	}
 	return result;
 }
-void get_corners(ubyte[8] bits,ref bool t1,ref bool t2,ref bool b1,ref bool b2)
+void get_corners(const ubyte[8] bits,ref bool t1,ref bool t2,ref bool b1,ref bool b2)
 {
 	t1=cast(bool)(bits[0]&0x80);
 	t2=bits[0]&1;
@@ -261,7 +261,12 @@ int get_block_criteria(bool t1,bool t2,bool b1,bool b2)
 {
 	int result=0;
 	foreach(b;bmap){
-		if(b.element>=0x2596 && b.element<=0x259F){
+		if((b.element>=0x2596 && b.element<=0x259F)
+		   || b.element==0x2580
+		   || b.element==0x2584
+		   || b.element==0x2588
+		   || b.element==0x258C
+		   || b.element==0x2590){
 			bool _t1,_t2,_b1,_b2;
 			get_corners(b.bits,_t1,_t2,_b1,_b2);
 			if(t1==_t1 && t2==_t2 && b1==_b1 && b2==_b2){
@@ -272,7 +277,7 @@ int get_block_criteria(bool t1,bool t2,bool b1,bool b2)
 	}
 	return result;
 }
-int get_qblock(int x,int mx,int y,int my,int element)
+int get_qblock(int x,int w,int y,int h,int element)
 {
 	int result=0;
 	ubyte[8] bits;
@@ -280,8 +285,8 @@ int get_qblock(int x,int mx,int y,int my,int element)
 	bool LR,TB;
 	bits=get_qblock_bits(element);
 	get_corners(bits,t1,t2,b1,b2);
-	LR=x<(mx/2);
-	TB=y<(my/2);
+	LR=x<(w/2);
+	TB=y<(h/2);
 	t1|=LR&&TB;
 	t2|=(!LR)&&TB;
 	b1|=LR&&(!TB);

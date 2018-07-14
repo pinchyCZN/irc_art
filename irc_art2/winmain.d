@@ -577,6 +577,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_GETDLGCODE:
 			return DLGC_WANTARROWS|DLGC_WANTCHARS|DLGC_WANTMESSAGE|DLGC_WANTALLKEYS;
 			break;
+		case WM_LBUTTONDBLCLK:
 		case WM_LBUTTONDOWN:
 			{
 				int x,y;
