@@ -922,7 +922,7 @@ void flip_clip(IMAGE *img)
 	img.clip=clip;
 	img.is_modified=true;
 }
-void draw_qblock(IMAGE *img)
+void draw_qblock(IMAGE *img,int fg,int bg)
 {
 	if(img is null)
 		return;
@@ -934,6 +934,10 @@ void draw_qblock(IMAGE *img)
 	int element=img.get_char(img.cursor.x,img.cursor.y);
 	element=get_qblock(rx,img.cell_width,ry,img.cell_height,element);
 	img.set_char(element,img.cursor.x,img.cursor.y);
+	if(fg>=0)
+		img.set_fg(fg,img.cursor.x,img.cursor.y);
+	if(bg>=0)
+		img.set_bg(bg,img.cursor.x,img.cursor.y);
 	img.is_modified=true;
 }
 void init_image()

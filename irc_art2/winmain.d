@@ -77,7 +77,11 @@ void select_drag(IMAGE *img,int cx,int cy)
 
 int process_mouse(int flags,short x,short y)
 {
-	if(flags&MK_CONTROL){
+	bool ctrl,shift,alt;
+	ctrl=cast(bool)(flags&MK_CONTROL);
+	shift=cast(bool)(flags&MK_SHIFT);
+	alt=GetKeyState(VK_MENU)&0x8000;
+	if(ctrl){
 		if(flags&(MK_LBUTTON|MK_RBUTTON)){
 			IMAGE *img=get_current_image();
 			int ox,oy;
@@ -93,9 +97,9 @@ int process_mouse(int flags,short x,short y)
 				draw_line(img,ox,oy,img.cursor.x,img.cursor.y,fg,bg,fill);
 			}
 		}
-	}else if(flags&MK_SHIFT){
-	}
-	else{
+	}else if(shift){
+	}else if(alt){
+	}else{
 		if(flags&MK_LBUTTON){
 			IMAGE *img=get_current_image();
 			if(img is null)
@@ -375,7 +379,10 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_PAINT_QUARTER:
 		{
-			draw_qblock(img);
+			int fg,bg;
+			fg=get_fg_color();
+			bg=get_bg_color();
+			draw_qblock(img,fg,bg);
 		}
 		break;
 	case SC_PAINT_LINE_TO:
