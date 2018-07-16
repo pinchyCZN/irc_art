@@ -3,7 +3,7 @@ nothrow:
 
 struct BLOCK_MAP{
 	ubyte[8] bits; //8ths
-	int element;
+	ushort element;
 }
 const BLOCK_MAP[] bmap=[
 	{[ 0b11111111,
@@ -241,7 +241,7 @@ const BLOCK_MAP[] bmap=[
 	   
 ];
 
-ubyte[8] get_qblock_bits(int element)
+ubyte[8] get_qblock_bits(ushort element)
 {
 	ubyte[8] result;
 	foreach(c;bmap){
@@ -257,9 +257,9 @@ void get_corners(const ubyte[8] bits,ref bool t1,ref bool t2,ref bool b1,ref boo
 	b1=cast(bool)(bits[7]&0x80);
 	b2=bits[7]&1;
 }
-int get_block_criteria(bool t1,bool t2,bool b1,bool b2)
+ushort get_block_criteria(bool t1,bool t2,bool b1,bool b2)
 {
-	int result=0;
+	ushort result=0;
 	foreach(b;bmap){
 		if((b.element>=0x2596 && b.element<=0x259F)
 		   || b.element==0x2580
@@ -277,9 +277,9 @@ int get_block_criteria(bool t1,bool t2,bool b1,bool b2)
 	}
 	return result;
 }
-int get_qblock(int x,int w,int y,int h,int element)
+ushort get_qblock(int x,int w,int y,int h,ushort element)
 {
-	int result=0;
+	ushort result=0;
 	ubyte[8] bits;
 	bool t1,t2,b1,b2;
 	bool LR,TB;

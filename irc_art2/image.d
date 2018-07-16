@@ -172,7 +172,7 @@ nothrow:
 		int index=x+y*width;
 		return cells[index].bg;
 	}
-	int get_char(int x,int y){
+	ushort get_char(int x,int y){
 		if(!is_valid_pos(x,y))
 			return 0;
 		int index=x+y*width;
@@ -931,7 +931,7 @@ void draw_qblock(IMAGE *img,int fg,int bg)
 	ry=img.mouse.y%img.cell_height;
 	import core.stdc.stdio;
 	printf("x,y=%i,%i\n",rx,ry);
-	int element=img.get_char(img.cursor.x,img.cursor.y);
+	ushort element=img.get_char(img.cursor.x,img.cursor.y);
 	element=get_qblock(rx,img.cell_width,ry,img.cell_height,element);
 	img.set_char(element,img.cursor.x,img.cursor.y);
 	if(fg>=0)
