@@ -377,13 +377,9 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 				img.set_char(fill,img.cursor.x,img.cursor.y);
 		}
 		break;
-	case SC_PAINT_QUARTER:
-		{
-			int fg,bg;
-			fg=get_fg_color();
-			bg=get_bg_color();
-			draw_qblock(img,fg,bg);
-		}
+	case SC_PAINT_QB_MODE:
+		img.qblock_mode=!img.qblock_mode;
+		img.is_modified=true;
 		break;
 	case SC_PAINT_LINE_TO:
 		push_undo(img);
@@ -394,11 +390,13 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			push_undo_time(img);
 			int fg,bg,fill;
 			int ox,oy;
+			POINT oqbpos;
 			fg=get_fg_color();
 			bg=get_bg_color();
 			fill=get_fill_char();
 			ox=img.cursor.x;
 			oy=img.cursor.y;
+			oqbpos=img.qbpos;
 			switch(sc.vkey){
 			case VK_LEFT: img.move_cursor(-1,0); break;
 			case VK_RIGHT: img.move_cursor(1,0); break;
@@ -406,18 +404,16 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			case VK_DOWN: img.move_cursor(0,1); break;
 			default: break;
 			}
-			if(fg>=0){
-				img.set_fg(fg,ox,oy);
-				img.set_fg(fg,img.cursor.x,img.cursor.y);
+			if(img.qblock_mode){
+				POINT a,b;
+				POINT cqb=img.qbpos;
+				a.x=ox;
+				a.y=oy;
+				b=img.cursor;
+				draw_line_qb(img,a,b,oqbpos,cqb,fg,bg,fill);
 			}
-			if(bg>=0){
-				img.set_bg(bg,ox,oy);
-				img.set_bg(bg,img.cursor.x,img.cursor.y);
-			}
-			if(fill!=0){
-				img.set_char(fill,ox,oy);
-				img.set_char(fill,img.cursor.x,img.cursor.y);
-			}
+			else
+				draw_line(img,ox,oy,img.cursor.x,img.cursor.y,fg,bg,fill);
 		}
 		break;
 	case SC_QUIT:
@@ -787,7 +783,10 @@ void update_status(HWND hwnd)
 		return;
 	}
 	char[80] tmp=0;
-	_snprintf(tmp.ptr,tmp.length,"CURSOR=%02i,%02i  FG=%02i BG=%02i",img.cursor.x,img.cursor.y,
+	string QB_MODE="QB ";
+	if(!img.qblock_mode)
+		QB_MODE="";
+	_snprintf(tmp.ptr,tmp.length,"%sCURSOR=%02i,%02i  FG=%02i BG=%02i",QB_MODE.ptr,img.cursor.x,img.cursor.y,
 																	img.get_fg(img.cursor.x,img.cursor.y),
 																	img.get_bg(img.cursor.x,img.cursor.y));
 	if(img.clip.width>0 || img.clip.height>0){

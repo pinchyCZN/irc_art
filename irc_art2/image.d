@@ -111,9 +111,11 @@ nothrow:
 	int width;
 	int height;
 	int cell_width=8,cell_height=12;
-	int is_modified;
+	bool is_modified;
+	bool qblock_mode;
 	DWORD time;
 	POINT cursor;
+	POINT qbpos;
 	POINT mouse;
 	POINT pre_click;
 	RECT selection;
@@ -179,6 +181,29 @@ nothrow:
 		return cells[index].val;
 	}
 	void move_cursor(int x,int y){
+		if(qblock_mode){
+			bool exit=false;
+			qbpos.x+=x;
+			qbpos.y+=y;
+			if((qbpos.x==0 || qbpos.x==1)&& x)
+				exit=true;
+			if((qbpos.y==0 || qbpos.y==1)&& y)
+				exit=true;
+			if(qbpos.x==1 && x)
+				exit=true;
+			if(qbpos.x<0)
+				qbpos.x=1;
+			else if(qbpos.x>1)
+				qbpos.x=0;
+			if(qbpos.y<0)
+				qbpos.y=1;
+			else if(qbpos.y>1)
+				qbpos.y=0;
+			if(exit){
+				is_modified=true;
+				return;
+			}
+		}
 		cursor.x+=x;
 		cursor.y+=y;
 		if(cursor.x<0)
@@ -463,6 +488,13 @@ void set_focus_flag(HWND hwnd,int active)
 	RedrawWindow(hparent,&rect,NULL,RDW_INVALIDATE);
 	image_focus_flag=active;
 }
+void scale_rect(ref RECT rect,int w,int h)
+{
+	rect.left*=w;
+	rect.right*=w;
+	rect.top*=h;
+	rect.bottom*=h;
+}
 int paint_image(HWND hwnd,HDC hdc)
 {
 	int result=FALSE;
@@ -493,6 +525,7 @@ int paint_image(HWND hwnd,HDC hdc)
 		rect.right=img.clip.x+img.clip.width;
 		rect.top=img.clip.y;
 		rect.bottom=img.clip.y+img.clip.height;
+		scale_rect(rect,img.cell_width,img.cell_height);
 		draw_focus_rect(img,hdc,rect);
 	}
 
@@ -501,11 +534,26 @@ int paint_image(HWND hwnd,HDC hdc)
 	rect.right=rect.left+1;
 	rect.top=img.cursor.y;
 	rect.bottom=rect.top+1;
+	scale_rect(rect,img.cell_width,img.cell_height);
+	if(img.qblock_mode){
+		int dx,dy;
+		dx=img.cell_width/2;
+		dy=img.cell_height/2;
+		if(img.qbpos.x==0)
+			rect.right-=dx;
+		else
+			rect.left+=dx;
+		if(img.qbpos.y==0)
+			rect.bottom-=dy;
+		else
+			rect.top+=dy;
+	}
 	draw_focus_rect(img,hdc,rect);
 
 
 	if(img.selection_width>0 || img.selection_height>0){
 		rect=img.selection;
+		scale_rect(rect,img.cell_width,img.cell_height);
 		draw_focus_rect(img,hdc,rect);
 	}
 	return result;
@@ -527,10 +575,6 @@ int is_bad_inverse(int color)
 void draw_focus_rect(IMAGE *img,HDC hdc,RECT rect)
 {
 	RECT tmp=rect;
-	tmp.left*=img.cell_width;
-	tmp.right*=img.cell_width;
-	tmp.top*=img.cell_height;
-	tmp.bottom*=img.cell_height;
 	DrawFocusRect(hdc,&tmp);
 
 	int select=false;
@@ -556,8 +600,8 @@ void draw_focus_rect(IMAGE *img,HDC hdc,RECT rect)
 						select=true;
 					}
 					int x,y,w,h;
-					x=i*img.cell_width;
-					y=j*img.cell_height;
+					x=i;
+					y=j;
 					if(side==LEFT || side==RIGHT){
 						w=1;
 						h=img.cell_height;
@@ -607,7 +651,7 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg,int fill)
 	if(0==dy){
 		int i;
 		dx=abs(dx);
-		for(i=0;i<dx;i++){
+		for(i=0;i<=dx;i++){
 			if(fg>=0)
 				img.set_fg(fg,minx+i,miny);
 			if(bg>=0)
@@ -673,6 +717,25 @@ void draw_line(IMAGE *img,int ox,int oy,int x,int y,int fg,int bg,int fill)
 	img.is_modified=true;
 }
 
+void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int fill)
+{
+	POINT pa,pb;
+	int width,height;
+	int dx,dy;
+	int minx,miny;
+	width=img.width*2;
+	height=img.height*2;
+	pa.x=a.x*2+sa.x;
+	pa.y=a.y*2+sa.y;
+	pb.x=b.x*2+sb.x;
+	pb.y=b.y*2+sb.y;
+	dx=pa.x-pb.x;
+	dy=pa.y-pb.y;
+	minx=min(pa.x,pb.x);
+	miny=min(pa.y,pb.y);
+
+
+}
 void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 {
 	int obg,ofg,ochar;
