@@ -98,6 +98,7 @@ SHORTCUT[] sc_map=[
 	{action:SC_MOVE_LEFT,vkey:VK_LEFT},
 	{action:SC_MOVE_RIGHT,vkey:VK_RIGHT},
 	{action:SC_PAINT_BEGIN,vkey:VK_LBUTTON,ctrl:true},
+	{action:SC_PAINT_BEGIN,vkey:' ',ctrl:true},
 	{action:SC_PAINT_LINE_TO,vkey:VK_LBUTTON,ctrl:true,shift:true},
 	{action:SC_PAINT_MOVE,vkey:VK_UP,ctrl:true},
 	{action:SC_PAINT_MOVE,vkey:VK_DOWN,ctrl:true},

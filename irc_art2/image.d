@@ -116,7 +116,6 @@ nothrow:
 	DWORD time;
 	POINT cursor;
 	POINT qbpos;
-	POINT mouse;
 	POINT pre_click;
 	RECT selection;
 	wstring fname;
@@ -397,8 +396,6 @@ int image_click(IMAGE *img,int ox,int oy)
 	img.pre_click.y=img.cursor.y;
 	img.cursor.x=x;
 	img.cursor.y=y;
-	img.mouse.x=ox;
-	img.mouse.y=oy;
 	x=ox%img.cell_width;
 	y=oy%img.cell_height;
 	img.qbpos.x=0;
@@ -739,25 +736,38 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 	miny=min(a.y,b.y);
 	if(0==dx && sa.x==sb.x){
 		int i;
+		POINT ta=sa,tb=sb;
+		if(a.y>b.y || (a.y==b.y && sa.y>sb.y)){
+			ta=sb;
+			tb=sa;
+		}
 		img.cursor.x=minx;
 		img.cursor.y=miny;
-		dy=abs(dy)+sa.x-sb.x;
+		img.qbpos=ta;
+		dy=abs(dy*2)-ta.y+tb.y;
 		for(i=0;i<=dy;i++){
-			if(fg>=0)
-				img.set_fg(fg,minx,miny+i);
-			if(bg>=0)
-				img.set_bg(bg,minx,miny+i);
+			draw_qblock(img,fg,bg);
+			img.move_cursor(0,1);
 		}
 		img.cursor=b;
+		img.qbpos=sb;
 	}else if(0==dy && sa.y==sb.y){
 		int i;
-		dx=abs(dx);
-		for(i=0;i<=dx;i++){
-			if(fg>=0)
-				img.set_fg(fg,minx+i,miny);
-			if(bg>=0)
-				img.set_bg(bg,minx+i,miny);
+		POINT ta=sa,tb=sb;
+		if(a.x>b.x || (a.x==b.x && sa.x>sb.x)){
+			ta=sb;
+			tb=sa;
 		}
+		img.cursor.x=minx;
+		img.cursor.y=miny;
+		img.qbpos=ta;
+		dx=abs(dx*2)-ta.x+tb.x;
+		for(i=0;i<=dx;i++){
+			draw_qblock(img,fg,bg);
+			img.move_cursor(1,0);
+		}
+		img.cursor=b;
+		img.qbpos=sb;
 	}
 }
 
@@ -1014,11 +1024,13 @@ void draw_qblock(IMAGE *img,int fg,int bg)
 {
 	if(img is null)
 		return;
-	int rx,ry;
-	rx=img.mouse.x%img.cell_width;
-	ry=img.mouse.y%img.cell_height;
+	bool LR=false,TB=false;
 	ushort element=img.get_char(img.cursor.x,img.cursor.y);
-	element=get_qblock(rx,img.cell_width,ry,img.cell_height,element);
+	if(img.qbpos.x<=0)
+		LR=true;
+	if(img.qbpos.y<=0)
+		TB=true;
+	element=get_qblock(LR,TB,element);
 	img.set_char(element,img.cursor.x,img.cursor.y);
 	if(fg>=0)
 		img.set_fg(fg,img.cursor.x,img.cursor.y);

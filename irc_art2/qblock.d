@@ -277,16 +277,13 @@ ushort get_block_criteria(bool t1,bool t2,bool b1,bool b2)
 	}
 	return result;
 }
-ushort get_qblock(int x,int w,int y,int h,ushort element)
+ushort get_qblock(bool LR,bool TB,ushort element)
 {
 	ushort result=0;
 	ubyte[8] bits;
 	bool t1,t2,b1,b2;
-	bool LR,TB;
 	bits=get_qblock_bits(element);
 	get_corners(bits,t1,t2,b1,b2);
-	LR=x<(w/2);
-	TB=y<(h/2);
 	t1|=LR&&TB;
 	t2|=(!LR)&&TB;
 	b1|=LR&&(!TB);
