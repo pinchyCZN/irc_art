@@ -375,6 +375,8 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 				img.set_bg(bg,img.cursor.x,img.cursor.y);
 			if(fill!=0)
 				img.set_char(fill,img.cursor.x,img.cursor.y);
+			else if(img.qblock_mode)
+				draw_qblock(img,fg,bg);
 		}
 		break;
 	case SC_PAINT_QB_MODE:

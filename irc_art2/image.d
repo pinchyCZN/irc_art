@@ -399,6 +399,14 @@ int image_click(IMAGE *img,int ox,int oy)
 	img.cursor.y=y;
 	img.mouse.x=ox;
 	img.mouse.y=oy;
+	x=ox%img.cell_width;
+	y=oy%img.cell_height;
+	img.qbpos.x=0;
+	img.qbpos.y=0;
+	if(x>=img.cell_width/2)
+		img.qbpos.x=1;
+	if(y>=img.cell_height/2)
+		img.qbpos.y=1;
 	result=true;
 	return result;
 }
@@ -723,19 +731,36 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 	int width,height;
 	int dx,dy;
 	int minx,miny;
-	width=img.width*2;
-	height=img.height*2;
-	pa.x=a.x*2+sa.x;
-	pa.y=a.y*2+sa.y;
-	pb.x=b.x*2+sb.x;
-	pb.y=b.y*2+sb.y;
-	dx=pa.x-pb.x;
-	dy=pa.y-pb.y;
-	minx=min(pa.x,pb.x);
-	miny=min(pa.y,pb.y);
-
-
+	width=img.width;
+	height=img.height;
+	dx=a.x-b.x;
+	dy=a.y-b.y;
+	minx=min(a.x,b.x);
+	miny=min(a.y,b.y);
+	if(0==dx && sa.x==sb.x){
+		int i;
+		img.cursor.x=minx;
+		img.cursor.y=miny;
+		dy=abs(dy)+sa.x-sb.x;
+		for(i=0;i<=dy;i++){
+			if(fg>=0)
+				img.set_fg(fg,minx,miny+i);
+			if(bg>=0)
+				img.set_bg(bg,minx,miny+i);
+		}
+		img.cursor=b;
+	}else if(0==dy && sa.y==sb.y){
+		int i;
+		dx=abs(dx);
+		for(i=0;i<=dx;i++){
+			if(fg>=0)
+				img.set_fg(fg,minx+i,miny);
+			if(bg>=0)
+				img.set_bg(bg,minx+i,miny);
+		}
+	}
 }
+
 void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 {
 	int obg,ofg,ochar;
@@ -992,8 +1017,6 @@ void draw_qblock(IMAGE *img,int fg,int bg)
 	int rx,ry;
 	rx=img.mouse.x%img.cell_width;
 	ry=img.mouse.y%img.cell_height;
-	import core.stdc.stdio;
-	printf("x,y=%i,%i\n",rx,ry);
 	ushort element=img.get_char(img.cursor.x,img.cursor.y);
 	element=get_qblock(rx,img.cell_width,ry,img.cell_height,element);
 	img.set_char(element,img.cursor.x,img.cursor.y);
