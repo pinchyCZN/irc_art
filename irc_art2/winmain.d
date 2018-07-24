@@ -385,15 +385,20 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_PAINT_LINE_TO:
 		push_undo(img);
-		if(img.qblock_mode){
+		int fg,bg,fill;
+		fg=get_fg_color();
+		bg=get_bg_color();
+		fill=get_fill_char();
+		if(img.qblock_mode && 0==fill){
 			POINT a,b;
-			POINT cqb=img.qbpos;
-			a.x=ox;
-			a.y=oy;
+			POINT sa,sb;
+			a=img.pre_click;
 			b=img.cursor;
-			draw_line_qb(img,a,b,oqbpos,cqb,fg,bg,fill);
+			sa=img.pre_qbpos;
+			sb=img.qbpos;
+			draw_line_qb(img,a,b,sa,sb,fg,bg,0);
 		}else{
-			draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,get_fg_color(),get_bg_color(),get_fill_char());
+			draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,fg,bg,fill);
 		}
 		break;
 	case SC_PAINT_MOVE:
@@ -818,10 +823,17 @@ void do_shit(HWND hwnd)
 	version(_DEBUG){
 		img.cursor.x=4;
 		img.cursor.y=3;
+		{
+		int i;
+		for(i=0;i<40;i++){
+			img.set_char(0x2580+i,i,4);
+		}
+		}
 		return;
 	}else{
 		return;
 	}
+	{
 	int i;
 	for(i=0;i<3;i++){
 		img.set_bg(9,2+i,1);
@@ -830,6 +842,7 @@ void do_shit(HWND hwnd)
 	for(i=0;i<6;i++){
 		img.set_bg(9,1,2+i);
 		img.set_bg(9,5,2+i);
+	}
 	}
 
 }
