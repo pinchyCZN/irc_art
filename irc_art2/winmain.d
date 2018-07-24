@@ -385,7 +385,16 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		break;
 	case SC_PAINT_LINE_TO:
 		push_undo(img);
-		draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,get_fg_color(),get_bg_color(),get_fill_char());
+		if(img.qblock_mode){
+			POINT a,b;
+			POINT cqb=img.qbpos;
+			a.x=ox;
+			a.y=oy;
+			b=img.cursor;
+			draw_line_qb(img,a,b,oqbpos,cqb,fg,bg,fill);
+		}else{
+			draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,get_fg_color(),get_bg_color(),get_fill_char());
+		}
 		break;
 	case SC_PAINT_MOVE:
 		{
