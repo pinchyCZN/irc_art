@@ -771,63 +771,62 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 		img.qbpos=sb;
 	}else{
 		int i;
-		int adx;
 		double m,fx,fy;
 		POINT _cursor,_qbpos;
-		fx=(a.x+(sa.x?.5:0))-(b.x+(sb.x?.5:0));
-		fy=(a.y+(sa.y?.5:0))-(b.y+(sb.y?.5:0));
+		fx=(a.x+(sa.x?1:0))-(b.x+(sb.x?1:0));
+		fy=(a.y+(sa.y?1:0))-(b.y+(sb.y?1:0));
 		m=cast(double)fy/fx;
 		_cursor=img.cursor;
 		_qbpos=img.qbpos;
 		if(a.x==b.x && a.y==b.y){
-			adx=1;
+			dx=1;
+			dy=1;
 			if(sa.x<sb.x)
 				img.qbpos=sa;
 			else
 				img.qbpos=sb;
 		}else{
-			if(a.x<b.x)
+			if(a.x<b.x){
 				img.cursor=a;
-			else
-				img.cursor=b;
-			adx=abs(a.x-b.x)
-			if(sa.x<sb.x)
 				img.qbpos=sa;
-			else
+				dx=sb.x-sa.x;
+			}else{
+				img.cursor=b;
 				img.qbpos=sb;
-		}
-		int pos=0;
-		for(i=0;i<=adx;i++){
-			int d=cast(int)(m*i);
-			//printf("%i %i\n",minx+i,miny+d);
-			if(fg>=0)
-				img.set_fg(fg,minx+i,miny+d);
-			if(bg>=0)
-				img.set_bg(bg,minx+i,miny+d);
-			if(fill)
-				img.set_char(fill,minx+i,miny+d);
-			int delta=pos-d;
-			int dist=abs(delta);
-			if(dist>1){
-				int j;
-				int dir=-1;
-				if(delta>0)
-					dir=1;
-				for(j=1;j<dist;j++){
-					int tx,ty;
-					tx=minx+i;
-					ty=miny+d+j*dir;
-					if(j>(dist>>1))
-						tx-=1;
-					if(bg>=0)
-						img.set_bg(bg,tx,ty);
-					if(fg>=0)
-						img.set_fg(fg,tx,ty);
-					if(fill)
-						img.set_char(fill,tx,ty);
-				}
+				dx=sa.x-sb.x;
 			}
-			pos=d;
+			dx+=2*abs(b.x-a.x);
+			if(a.y<=b.y){
+				dy=sb.y-sa.y;
+			}else{
+				dy=sa.y-sb.y;
+			}
+			int t=2*abs(a.y-b.y);
+			if(t==0 && dy<0)
+				dy=abs(dy);
+			dy+=t;
+		}
+		import core.stdc.stdio;
+		printf("---\n");
+		printf("a=%i,%i (%i,%i) b=%i,%i (%i,%i)\n",a.x,a.y,sa.x,sa.y,b.x,b.y,sb.x,sb.y);
+		printf("dx=%i dy=%i\n",dx,dy);
+		printf("m=%f\n",m);
+		double y=0;
+		for(i=0;i<=dx;i++){
+			int j;
+			y+=m;
+			dy=abs(cast(int)y);
+			//printf(" %i\n",dy);
+			for(j=0;j<dy;j++){
+				int dir=1;
+				if(m<0)
+					dir=-1;
+				img.move_cursor(0,dir);
+				draw_qblock(img,fg,bg);
+				y-=m;
+			}
+			draw_qblock(img,fg,bg);
+			img.move_cursor(1,0);
 		}
 		img.cursor=_cursor;
 		img.qbpos=_qbpos;

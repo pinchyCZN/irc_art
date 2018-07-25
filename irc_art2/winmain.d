@@ -819,10 +819,11 @@ void do_shit(HWND hwnd)
 	IMAGE *img=get_current_image();
 	//img.resize_image(8,10);
 	CheckDlgButton(hwnd,IDC_BG_CHK,BST_CHECKED);
-	bg_color=9;
+	bg_color=12;
+	img.qblock_mode=true;
 	version(_DEBUG){
-		img.cursor.x=4;
-		img.cursor.y=3;
+		img.cursor.x=28;
+		img.cursor.y=11;
 		{
 		int i;
 		for(i=0;i<40;i++){
