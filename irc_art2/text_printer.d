@@ -16,11 +16,13 @@ CONTROL_ANCHOR[] text_edit_anchor=[
 	{IDC_TEXTCOLOR,ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDC_3D,ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDC_FONT,ANCHOR_LEFT|ANCHOR_BOTTOM},
+	{IDC_SPACING,ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
 ];
 WIN_REL_POS text_win_pos;
 WCHAR[] last_text;
 HWND htextdlg=NULL;
+int text_spacing=0;
 
 struct TEXT_PARAMS{
 	HWND hparent;
@@ -45,7 +47,14 @@ int get_rand_color()
 		last_color=0;
 	return c;
 }
-
+int clamp_spacing(int val)
+{
+	if(val<-10)
+		val=10;
+	else if(val>10)
+		val=-10;
+	return val;
+}
 void calc_clip_size_ascii(char *str,FONT font,IMAGE *img)
 {
 	int index=0;
@@ -81,6 +90,9 @@ void calc_clip_size_ascii(char *str,FONT font,IMAGE *img)
 			int size,_w,_h;
 			_w=font.mdata[aindex];
 			_h=font.mdata[aindex+1];
+			if(w>0 && _w>0){
+				w+=text_spacing;
+			}
 			w+=_w;
 			h=_h;
 			size=_w*_h;
@@ -116,7 +128,9 @@ void calc_clip_size_bitmap(char *str,FONT font,IMAGE *img,int is3d)
 			count++;
 		}
 	}
-	w=w*font.width;
+	w=w*font.width+((w-1)*text_spacing);
+	if(w<0)
+		w=0;
 	h=h*font.height;
 	if(w>0 && is3d)
 		w++;
@@ -180,7 +194,9 @@ void print_text_bitmap(char *str,FONT font,int fg,int bg,int tg,int is3d,int isc
 				}
 			}
 		}
-		xpos+=font.width;
+		xpos+=font.width+text_spacing;
+		if(xpos<0)
+			xpos=0;
 	}
 }
 int get_ascii_offset(int a,FONT font)
@@ -233,6 +249,7 @@ void print_text_ascii(char *str,FONT font,int fg,int bg,int tg,int iscolor,
 		int soffset=get_ascii_offset(aindex,font);
 		for(i=0;i<h;i++){
 			for(j=0;j<w;j++){
+				WCHAR src_val,dst_val;
 				int src_index=soffset+j+i*w;
 				int dst_index=xpos+j+ypos*clip.width+i*clip.width;
 				if(src_index>=font.data.length)
@@ -241,10 +258,17 @@ void print_text_ascii(char *str,FONT font,int fg,int bg,int tg,int iscolor,
 					break;
 				clip.cells[dst_index].fg=fg;
 				clip.cells[dst_index].bg=bg;
-				clip.cells[dst_index].val=font.data[src_index];
+				src_val=font.data[src_index];
+				dst_val=clip.cells[dst_index].val;
+				if(src_val!=' ')
+					clip.cells[dst_index].val=src_val;
+				else if(dst_val==0)
+					clip.cells[dst_index].val=src_val;
 			}
 		}
-		xpos+=w;
+		xpos+=w+text_spacing;
+		if(xpos<0)
+			xpos=0;
 	}
 }
 void print_text(char *str,int is3d,int iscolor,int font_type)
@@ -303,10 +327,10 @@ void combo_select_next(HWND hcombo,int dir)
 	SendMessage(GetParent(hcombo),WM_APP,0,0);
 }
 private WNDPROC old_edit_proc=NULL;
-private extern(C)
+private extern(Windows)
 BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	version(M_DEBUG){
+	version(_DEBUG){
 		print_msg(msg,wparam,lparam,hwnd);
 	}
 	switch(msg){
@@ -386,6 +410,22 @@ BOOL _edit_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 						toggle_check_button(GetParent(hwnd),IDC_3D);
 					}
 					break;
+				case VK_ADD:
+					if(ctrl){
+						text_spacing+=1;
+						text_spacing=clamp_spacing(text_spacing);
+						set_text_val(GetDlgItem(htextdlg,IDC_SPACING),text_spacing);
+						SendMessage(htextdlg,WM_APP,0,0);
+					}
+					break;
+				case VK_SUBTRACT:
+					if(ctrl){
+						text_spacing-=1;
+						text_spacing=clamp_spacing(text_spacing);
+						set_text_val(GetDlgItem(htextdlg,IDC_SPACING),text_spacing);
+						SendMessage(htextdlg,WM_APP,0,0);
+					}
+					break;
 				default:
 					break;
 				}
@@ -432,6 +472,48 @@ void save_text(HWND hedit,ref WCHAR[] str)
 	if(0==len)
 		str.length=0;
 }
+void set_text_val(HWND hwnd,int val)
+{
+	char[8] str;
+	_snprintf(str.ptr,str.length,"%i",val);
+	SetWindowTextA(hwnd,str.ptr);
+}
+
+private WNDPROC old_edit_proc_sp=NULL;
+private extern(Windows)
+BOOL edit_proc_sp(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+	switch(msg){
+		case WM_GETDLGCODE:
+			if(VK_RETURN==wparam)
+				return DLGC_WANTALLKEYS;
+			break;
+		case WM_KEYDOWN:
+			{
+				int key=wparam;
+				int dir=0;
+				if(VK_UP==key)
+					dir=1;
+				else if(VK_DOWN==key)
+					dir=-1;
+				if(dir || VK_RETURN==key){
+					char[8] str;
+					int val;
+					GetWindowTextA(hwnd,str.ptr,str.length);
+					val=atoi(str.ptr);
+					val+=dir;
+					text_spacing=val;
+					text_spacing=clamp_spacing(text_spacing);
+					set_text_val(hwnd,text_spacing);
+					SendMessage(GetParent(hwnd),WM_APP,0,0);
+				}
+			}
+			break;
+		default:
+			break;
+	}
+	return CallWindowProc(old_edit_proc,hwnd,msg,wparam,lparam);
+}
 
 extern (Windows)
 BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
@@ -455,6 +537,10 @@ BOOL dlg_text(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				HWND htext=GetDlgItem(hwnd,IDC_TEXT);
 				SendMessage(htext,EM_SETLIMITTEXT,250,0);
 				old_edit_proc=cast(WNDPROC)SetWindowLongPtr(htext,GWL_WNDPROC,cast(LONG_PTR)&_edit_proc);
+				htext=GetDlgItem(hwnd,IDC_SPACING);
+				SendMessage(htext,EM_SETLIMITTEXT,3,0);
+				set_text_val(htext,text_spacing);
+				old_edit_proc_sp=cast(WNDPROC)SetWindowLongPtr(htext,GWL_WNDPROC,cast(LONG_PTR)&edit_proc_sp);
 				if(flag_is3d)
 					CheckDlgButton(hwnd,IDC_3D,BST_CHECKED);
 				if(flag_color)

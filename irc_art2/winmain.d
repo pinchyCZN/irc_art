@@ -826,8 +826,8 @@ void do_shit(HWND hwnd)
 		img.cursor.y=11;
 		{
 		int i;
-		for(i=0;i<40;i++){
-			img.set_char(0x2580+i,i,4);
+		for(i=0;i<30;i++){
+			img.set_char(0x2580+i,i,0);
 		}
 		}
 		return;
