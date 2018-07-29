@@ -256,14 +256,13 @@ void print_text_ascii(char *str,FONT font,int fg,int bg,int tg,int iscolor,
 					break;
 				if(dst_index>=clip.cells.length)
 					break;
-				clip.cells[dst_index].fg=fg;
-				clip.cells[dst_index].bg=bg;
 				src_val=font.data[src_index];
 				dst_val=clip.cells[dst_index].val;
-				if(src_val!=' ')
+				if(src_val!=' ' || dst_val==0){
 					clip.cells[dst_index].val=src_val;
-				else if(dst_val==0)
-					clip.cells[dst_index].val=src_val;
+					clip.cells[dst_index].fg=fg;
+				}
+				clip.cells[dst_index].bg=bg;
 			}
 		}
 		xpos+=w+text_spacing;
