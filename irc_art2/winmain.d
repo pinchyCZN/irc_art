@@ -1121,6 +1121,10 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 		if(-1==ret || 0==ret){
 			break;
 		}else{
+			version(M_DEBUG){
+				if(msg.message!=WM_SETCURSOR && msg.message!=WM_MOUSEFIRST && msg.message!=WM_NCHITTEST)
+					print_msg(msg.message,msg.wParam,msg.lParam,msg.hwnd);
+			}
 			if(!IsDialogMessage(hmaindlg,&msg)){
 				if(msg.hwnd!=himage)
 					TranslateMessage(&msg);

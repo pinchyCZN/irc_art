@@ -79,10 +79,8 @@ const IDC_DELETE = 1024;
 const IDC_CHAR = 1025;
 //C     #define IDC_HEXVAL                      1028
 const IDC_FILL_CHK = 1027;
-//C     #define IDC_EDIT1                       1030
-const IDC_HEXVAL = 1028;
 //C     #define IDC_SPACING                     1030
-const IDC_EDIT1 = 1030;
+const IDC_HEXVAL = 1028;
 //C     #define IDM_SAVE                        40001
 const IDC_SPACING = 1030;
 //C     #define IDM_COPYTOCLIP                  40002
