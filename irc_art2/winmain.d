@@ -118,6 +118,7 @@ int process_mouse(int flags,short x,short y)
 		}
 
 		//TEST SHIT
+		if(0)
 		{
 			IMAGE *img=get_current_image();
 			foreach(ref c;img.cells){
@@ -135,8 +136,8 @@ int process_mouse(int flags,short x,short y)
 			a.y=12;
 			b.x=ox;
 			b.y=oy;
-			sa.x=0;
-			sa.y=0;
+			sa.x=1;
+			sa.y=1;
 			sb.x=(x%img.cell_width)>=(img.cell_width/2)?1:0;
 			sb.y=(y%img.cell_height)>=(img.cell_height/2)?1:0;
 			int fg,bg;

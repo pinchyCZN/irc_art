@@ -771,7 +771,10 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 		img.qbpos=sb;
 	}else{
 		POINT pqa,pqb;
-		if(minx==a.x && pqa.x==pqb.x){
+		int _a,_b;
+		_a=a.x*2+sa.x;
+		_b=b.x*2+sb.x;
+		if(_a<=_b){
 			pa=a;
 			pb=b;
 			pqa=sa;
@@ -784,11 +787,11 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 		}
 		dx=(2*pa.x+pqa.x)-(2*pb.x+pqb.x);
 		dy=(2*pa.y+pqa.y)-(2*pb.y+pqb.y);
-		import core.stdc.stdio;
-		printf("x1=%i,%i y1=%i,%i to x2=%i,%i y2=%i,%i dx=%i dy=%i\n",pa.x,pqa.x,pa.y,pqa.y,pb.x,pqb.x,pb.y,pqb.y,dx,dy);
 		double m,x,y;
 		x=dx;y=dy;
 		m=y/x;
+		import core.stdc.stdio;
+		printf("x1=%i,%i y1=%i,%i to x2=%i,%i y2=%i,%i dx=%i dy=%i\n",a.x,sa.x,a.y,sa.y,b.x,sb.x,b.y,sb.y,dx,dy);
 		printf("m=%f\n",m);
 		POINT _cursor,_qbpos;
 		_cursor=img.cursor;
@@ -796,15 +799,35 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 		int i;
 		dx=abs(dx);
 		for(i=0;i<=dx;i++){
+			import std.math;
 			int tx,ty;
 			x=i;
 			y=m*x;
-			tx=cast(int)x;
+			tx=cast(int)round(x);
 			tx+=pa.x*2;
 			tx+=pqa.x;
 			img.cursor.x=tx/2;
 			img.qbpos.x=tx&1;
-			ty=cast(int)y;
+			ty=cast(int)round(y);
+			ty+=pa.y*2;
+			ty+=pqa.y;
+			img.cursor.y=ty/2;
+			img.qbpos.y=ty&1;
+			draw_qblock(img,fg,bg);
+		}
+		for(i=0;i<=abs(dy);i++){
+			import std.math;
+			int tx,ty;
+			y=i;
+			if(m<0)
+				y=-y;
+			x=y/m;
+			tx=cast(int)round(x);
+			tx+=pa.x*2;
+			tx+=pqa.x;
+			img.cursor.x=tx/2;
+			img.qbpos.x=tx&1;
+			ty=cast(int)round(y);
 			ty+=pa.y*2;
 			ty+=pqa.y;
 			img.cursor.y=ty/2;
