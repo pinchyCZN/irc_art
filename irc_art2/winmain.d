@@ -135,8 +135,8 @@ int process_mouse(int flags,short x,short y)
 			a.y=12;
 			b.x=ox;
 			b.y=oy;
-			sa.x=1;
-			sa.y=1;
+			sa.x=0;
+			sa.y=0;
 			sb.x=(x%img.cell_width)>=(img.cell_width/2)?1:0;
 			sb.y=(y%img.cell_height)>=(img.cell_height/2)?1:0;
 			int fg,bg;
@@ -146,7 +146,6 @@ int process_mouse(int flags,short x,short y)
 			img.cursor.x=ox;
 			img.cursor.y=oy;
 			img.qbpos=sb;
-
 		}
 	}
 	return 0;
