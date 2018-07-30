@@ -770,63 +770,65 @@ void draw_line_qb(IMAGE *img,POINT a,POINT b,POINT sa,POINT sb,int fg,int bg,int
 		img.cursor=b;
 		img.qbpos=sb;
 	}else{
-		int i;
-		double m,fx,fy;
+		POINT pqa,pqb;
+		if(minx==a.x){
+			pa=a;
+			pb=b;
+			pqa=sa;
+			pqb=sb;
+		}else{
+			pa=b;
+			pb=a;
+			pqa=sb;
+			pqb=sa;
+		}
+		dx=(2*pa.x+pqa.x)-(2*pb.x+pqb.x);
+		dy=(2*pa.y+pqa.y)-(2*pb.y+pqb.y);
+		import core.stdc.stdio;
+		printf("x1=%i,%i y1=%i,%i to x2=%i,%i y2=%i,%i dx=%i dy=%i\n",pa.x,pqa.x,pa.y,pqa.y,pb.x,pqb.x,pb.y,pqb.y,dx,dy);
+		double m,tx,ty;
+		tx=dx;ty=dy;
+		m=tx/ty;
+		printf("m=%f\n",m);
 		POINT _cursor,_qbpos;
-		fx=(a.x+(sa.x?1:0))-(b.x+(sb.x?1:0));
-		fy=(a.y+(sa.y?1:0))-(b.y+(sb.y?1:0));
-		m=cast(double)fy/fx;
 		_cursor=img.cursor;
 		_qbpos=img.qbpos;
-		if(a.x==b.x && a.y==b.y){
-			dx=1;
-			dy=1;
-			if(sa.x<sb.x)
-				img.qbpos=sa;
-			else
-				img.qbpos=sb;
-		}else{
-			if(a.x<b.x){
-				img.cursor=a;
-				img.qbpos=sa;
-				dx=sb.x-sa.x;
-			}else{
-				img.cursor=b;
-				img.qbpos=sb;
-				dx=sa.x-sb.x;
-			}
-			dx+=2*abs(b.x-a.x);
-			if(a.y<=b.y){
-				dy=sb.y-sa.y;
-			}else{
-				dy=sa.y-sb.y;
-			}
-			int t=2*abs(a.y-b.y);
-			if(t==0 && dy<0)
-				dy=abs(dy);
-			dy+=t;
-		}
-		import core.stdc.stdio;
-		printf("---\n");
-		printf("a=%i,%i (%i,%i) b=%i,%i (%i,%i)\n",a.x,a.y,sa.x,sa.y,b.x,b.y,sb.x,sb.y);
-		printf("dx=%i dy=%i\n",dx,dy);
-		printf("m=%f\n",m);
-		double y=0;
+		int i,j;
+		img.cursor=pa;
+		img.qbpos=pqa;
+		ty=0;
+		dx=abs(dx);
 		for(i=0;i<=dx;i++){
-			int j;
-			y+=m;
-			dy=abs(cast(int)y);
-			//printf(" %i\n",dy);
-			for(j=0;j<dy;j++){
-				int dir=1;
-				if(m<0)
-					dir=-1;
-				img.move_cursor(0,dir);
-				draw_qblock(img,fg,bg);
-				y-=m;
-			}
 			draw_qblock(img,fg,bg);
+			ty=(i+1)*(1/m);
+			j=cast(int)ty;
 			img.move_cursor(1,0);
+			img.cursor.y=pa.y+j/2;
+			if(m<0){
+				if(j&1){
+					img.qbpos.y=0;
+					if(!pqa.y){
+						img.cursor.y--;
+						img.qbpos.y=1;
+					}
+				}
+				else{
+//					img.qbpos.y=pqa.y;
+				}
+			}
+			else{
+				if(j&1){
+					img.qbpos.y=1;
+					if(pqa.y){
+						img.cursor.y++;
+						img.qbpos.y=0;
+					}
+				}
+				else{
+//					img.qbpos.y=pqa.y;
+				}
+			}
+
 		}
 		img.cursor=_cursor;
 		img.qbpos=_qbpos;

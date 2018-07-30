@@ -116,6 +116,38 @@ int process_mouse(int flags,short x,short y)
 			select_drag(img,cx,cy);
 			img.is_modified=true;
 		}
+
+		//TEST SHIT
+		{
+			IMAGE *img=get_current_image();
+			foreach(ref c;img.cells){
+				c.bg=1;
+				c.fg=1;
+				c.val=0;
+			}
+			POINT a,b;
+			POINT sa,sb;
+			int ox,oy;
+			ox=x/img.cell_width;
+			oy=y/img.cell_height;
+
+			a.x=20;
+			a.y=12;
+			b.x=ox;
+			b.y=oy;
+			sa.x=1;
+			sa.y=1;
+			sb.x=(x%img.cell_width)>=(img.cell_width/2)?1:0;
+			sb.y=(y%img.cell_height)>=(img.cell_height/2)?1:0;
+			int fg,bg;
+			fg=0;
+			bg=12;
+			draw_line_qb(img,a,b,sa,sb,fg,bg,0);
+			img.cursor.x=ox;
+			img.cursor.y=oy;
+			img.qbpos=sb;
+
+		}
 	}
 	return 0;
 }
