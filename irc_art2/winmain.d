@@ -84,9 +84,6 @@ int process_mouse(int flags,short x,short y)
 	if(ctrl){
 		if(flags&(MK_LBUTTON|MK_RBUTTON)){
 			IMAGE *img=get_current_image();
-			int ox,oy;
-			ox=img.cursor.x;
-			oy=img.cursor.y;
 			if(image_click(img,x,y)){
 				int fg,bg,fill;
 				fg=get_fg_color();
@@ -94,7 +91,11 @@ int process_mouse(int flags,short x,short y)
 				fill=get_fill_char();
 				if(flags&MK_RBUTTON)
 					fg=-1;
-				draw_line(img,ox,oy,img.cursor.x,img.cursor.y,fg,bg,fill);
+				if(img.qblock_mode){
+					draw_line_qb(img,img.pre_click,img.cursor,img.pre_qbpos,img.qbpos,fg,bg,fill);
+				}else{
+					draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,fg,bg,fill);
+				}
 			}
 		}
 	}else if(shift){
