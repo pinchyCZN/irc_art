@@ -45,6 +45,8 @@ enum{
 	SC_COPY,
 	SC_PASTE,
 	SC_PASTE_INTO_SELECTION,
+	SC_SET_CURSOR,
+	SC_MAKE_SELECTION,
 	SC_OPEN_TEXT_DLG,
 	SC_OPEN_CHAR_SC_DLG,
 	SC_OPEN_FUNC_SC_DLG,
@@ -52,6 +54,7 @@ enum{
 	SC_CHK_BG,
 	SC_CHK_FILL,
 	SC_SELECT_ALL,
+	SC_GRID,
 	SC_FILL,
 	SC_FLIP,
 	SC_ROTATE,
@@ -64,9 +67,22 @@ enum{
 	SC_MOVE_DOWN,
 	SC_MOVE_LEFT,
 	SC_MOVE_RIGHT,
-	SC_PAINT_BEGIN,
-	SC_PAINT_MOVE,
+	SC_FG_INCREASE,
+	SC_FG_DECREASE,
+	SC_BG_INCREASE,
+	SC_BG_DECREASE,
+	SC_CHAR_INCREASE,
+	SC_CHAR_DECREASE,
+	SC_PAINT,
 	SC_PAINT_LINE_TO,
+	SC_PAINT_MOVE_UP,
+	SC_PAINT_MOVE_DOWN,
+	SC_PAINT_MOVE_LEFT,
+	SC_PAINT_MOVE_RIGHT,
+	SC_PAINT_MOVE_UPRIGHT,
+	SC_PAINT_MOVE_UPLEFT,
+	SC_PAINT_MOVE_DOWNLEFT,
+	SC_PAINT_MOVE_DOWNRIGHT,
 	SC_PAINT_QB_MODE,
 	SC_QUIT,
 	SC_NONE,
@@ -85,6 +101,7 @@ SHORTCUT[] sc_map=[
 	{action:SC_CHK_BG,vkey:'2',ctrl:true},
 	{action:SC_CHK_FILL,vkey:'3',ctrl:true},
 	{action:SC_SELECT_ALL,vkey:'A',ctrl:true},
+	{action:SC_GRID,vkey:'G',ctrl:true},
 	{action:SC_FILL,vkey:'F',ctrl:true},
 	{action:SC_FLIP,vkey:'F',ctrl:true,shift:true},
 	{action:SC_ROTATE,vkey:'R',ctrl:true},
@@ -97,14 +114,38 @@ SHORTCUT[] sc_map=[
 	{action:SC_MOVE_DOWN,vkey:VK_DOWN},
 	{action:SC_MOVE_LEFT,vkey:VK_LEFT},
 	{action:SC_MOVE_RIGHT,vkey:VK_RIGHT},
-	{action:SC_PAINT_BEGIN,vkey:VK_LBUTTON,ctrl:true},
-	{action:SC_PAINT_BEGIN,vkey:' ',ctrl:true},
-	{action:SC_PAINT_LINE_TO,vkey:VK_LBUTTON,ctrl:true,shift:true},
-	{action:SC_PAINT_MOVE,vkey:VK_UP,ctrl:true},
-	{action:SC_PAINT_MOVE,vkey:VK_DOWN,ctrl:true},
-	{action:SC_PAINT_MOVE,vkey:VK_LEFT,ctrl:true},
-	{action:SC_PAINT_MOVE,vkey:VK_RIGHT,ctrl:true},
+	{action:SC_PAINT,vkey:' ',ctrl:true},
+	{action:SC_PAINT_MOVE_UP,vkey:VK_UP,ctrl:true},
+	{action:SC_PAINT_MOVE_DOWN,vkey:VK_DOWN,ctrl:true},
+	{action:SC_PAINT_MOVE_LEFT,vkey:VK_LEFT,ctrl:true},
+	{action:SC_PAINT_MOVE_RIGHT,vkey:VK_RIGHT,ctrl:true},
+	{action:SC_PAINT_MOVE_UP,vkey:VK_NUMPAD8,ctrl:true},
+	{action:SC_PAINT_MOVE_DOWN,vkey:VK_NUMPAD2,ctrl:true},
+	{action:SC_PAINT_MOVE_LEFT,vkey:VK_NUMPAD4,ctrl:true},
+	{action:SC_PAINT_MOVE_RIGHT,vkey:VK_NUMPAD6,ctrl:true},
+	{action:SC_PAINT_MOVE_UPRIGHT,vkey:VK_NUMPAD9,ctrl:true},
+	{action:SC_PAINT_MOVE_UPLEFT,vkey:VK_NUMPAD7,ctrl:true},
+	{action:SC_PAINT_MOVE_DOWNLEFT,vkey:VK_NUMPAD1,ctrl:true},
+	{action:SC_PAINT_MOVE_DOWNRIGHT,vkey:VK_NUMPAD3,ctrl:true},
 	{action:SC_PAINT_QB_MODE,vkey:'Q',alt:true},
+];
+SHORTCUT[] sc_mouse_move_map=[
+	{action:SC_PAINT_LINE_TO,vkey:VK_LBUTTON},
+	{action:SC_MAKE_SELECTION,vkey:VK_RBUTTON},
+];
+SHORTCUT[] sc_mouse_click_map=[
+	{action:SC_PAINT_LINE_TO,vkey:VK_LBUTTON,shift:true},
+	{action:SC_SET_CURSOR,vkey:VK_LBUTTON,ctrl:true},
+	{action:SC_PAINT,vkey:VK_LBUTTON},
+	{action:SC_MAKE_SELECTION,vkey:VK_RBUTTON},
+];
+SHORTCUT[] sc_mouse_wheel_map=[
+	{action:SC_FG_INCREASE,ctrl:true,data:1},
+	{action:SC_FG_DECREASE,ctrl:true,data:0},
+	{action:SC_BG_INCREASE,shift:true,data:1},
+	{action:SC_BG_DECREASE,shift:true,data:0},
+	{action:SC_CHAR_INCREASE,ctrl:true,shift:true,data:1},
+	{action:SC_CHAR_DECREASE,ctrl:true,shift:true,data:0},
 ];
 SHORTCUT[] sc_ascii;
 
@@ -845,6 +886,43 @@ int get_shortcut_action(ref SHORTCUT sc)
 				sc.data=cast(WCHAR)char_code;
 				result=true;
 			}
+		}
+	}
+	return result;
+}
+
+int get_mouse_click_action(ref SHORTCUT sc)
+{
+	int result=false;
+	foreach(c;sc_mouse_click_map){
+		if(compare_sc(c,sc)){
+			result=true;
+			sc=c;
+			break;
+		}
+	}
+	return result;
+}
+int get_mouse_move_action(ref SHORTCUT sc)
+{
+	int result=false;
+	foreach(c;sc_mouse_move_map){
+		if(compare_sc(c,sc)){
+			result=true;
+			sc=c;
+			break;
+		}
+	}
+	return result;
+}
+int get_mouse_wheel_action(ref SHORTCUT sc)
+{
+	int result=false;
+	foreach(c;sc_mouse_wheel_map){
+		if(compare_sc(c,sc)){
+			result=true;
+			sc=c;
+			break;
 		}
 	}
 	return result;

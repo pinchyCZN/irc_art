@@ -74,81 +74,93 @@ void select_drag(IMAGE *img,int cx,int cy)
 		img.selection.top=cy;
 	}
 }
-
-int process_mouse(int flags,short x,short y)
+int parse_flags(int flags,ref int vkey,ref bool ctrl,ref bool shift,ref bool alt)
 {
-	bool ctrl,shift,alt;
 	ctrl=cast(bool)(flags&MK_CONTROL);
 	shift=cast(bool)(flags&MK_SHIFT);
 	alt=GetKeyState(VK_MENU)&0x8000;
-	if(ctrl){
-		if(flags&(MK_LBUTTON|MK_RBUTTON)){
-			IMAGE *img=get_current_image();
-			if(image_click(img,x,y)){
-				int fg,bg,fill;
-				fg=get_fg_color();
-				bg=get_bg_color();
-				fill=get_fill_char();
-				if(flags&MK_RBUTTON)
-					fg=-1;
-				if(img.qblock_mode){
-					draw_line_qb(img,img.pre_click,img.cursor,img.pre_qbpos,img.qbpos,fg,bg,fill);
-				}else{
-					draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,fg,bg,fill);
-				}
-			}
-		}
-	}else if(shift){
-	}else if(alt){
-	}else{
-		if(flags&MK_LBUTTON){
-			IMAGE *img=get_current_image();
-			if(img is null)
-				return 0;
-			int cx,cy;
-			if(x<0)
-				x=0;
-			if(y<0)
-				y=0;
-			cx=x/img.cell_width;
-			cy=y/img.cell_height;
-			img.selection.left=img.cursor.x;
-			img.selection.top=img.cursor.y;
-			select_drag(img,cx,cy);
-			img.is_modified=true;
-		}
+	if(flags&MK_LBUTTON)
+		vkey=VK_LBUTTON;
+	else if(flags&MK_RBUTTON)
+		vkey=VK_RBUTTON;
+	else if(flags*MK_MBUTTON)
+		vkey=VK_MBUTTON;
+	return 1;
+}
+int process_mouse_click(short x,short y,int flags)
+{
+	int result=0;
+	int vkey=0;
+	bool ctrl,shift,alt;
+	parse_flags(flags,vkey,ctrl,shift,alt);
+	SHORTCUT sc;
+	sc.vkey=vkey;
+	sc.ctrl=ctrl;
+	sc.shift=shift;
+	sc.alt=alt;
+	if(get_mouse_click_action(sc)){
+		IMAGE *img=get_current_image();
+		if(sc.action==SC_PAINT_LINE_TO)
+			push_undo(img);
+		image_click(img,x,y);
+		result=do_action(sc,img);
+	}
+	return result;
+}
 
-		//TEST SHIT
-		if(0)
-		{
-			IMAGE *img=get_current_image();
-			foreach(ref c;img.cells){
-				c.bg=1;
-				c.fg=1;
-				c.val=0;
-			}
-			POINT a,b;
-			POINT sa,sb;
-			int ox,oy;
-			ox=x/img.cell_width;
-			oy=y/img.cell_height;
+int process_mouse_move(short x,short y,int flags)
+{
+	int result=0;
+	int vkey=0;
+	bool ctrl,shift,alt;
+	parse_flags(flags,vkey,ctrl,shift,alt);
+	if(0==flags){
+		if(!(ctrl || shift || alt))
+			return result;
+	}
+	SHORTCUT sc;
+	sc.vkey=vkey;
+	sc.ctrl=ctrl;
+	sc.shift=shift;
+	sc.alt=alt;
+	if(get_mouse_move_action(sc)){
+		IMAGE *img=get_current_image();
+		image_click(img,x,y);
+		result=do_action(sc,img);
+	}
+	return result;
 
-			a.x=20;
-			a.y=12;
-			b.x=ox;
-			b.y=oy;
-			sa.x=1;
-			sa.y=1;
-			sb.x=(x%img.cell_width)>=(img.cell_width/2)?1:0;
-			sb.y=(y%img.cell_height)>=(img.cell_height/2)?1:0;
-			int fg,bg;
-			fg=0;
-			bg=12;
-			draw_line_qb(img,a,b,sa,sb,fg,bg,0);
-			img.cursor.x=ox;
-			img.cursor.y=oy;
-			img.qbpos=sb;
+
+	//TEST SHIT
+	if(0)
+	{
+		IMAGE *img=get_current_image();
+		foreach(ref c;img.cells){
+			c.bg=1;
+			c.fg=1;
+			c.val=0;
 		}
+		POINT a,b;
+		POINT sa,sb;
+		int ox,oy;
+		ox=x/img.cell_width;
+		oy=y/img.cell_height;
+
+		a.x=20;
+		a.y=12;
+		b.x=ox;
+		b.y=oy;
+		sa.x=1;
+		sa.y=1;
+		sb.x=(x%img.cell_width)>=(img.cell_width/2)?1:0;
+		sb.y=(y%img.cell_height)>=(img.cell_height/2)?1:0;
+		int fg,bg;
+		fg=0;
+		bg=12;
+		draw_line_qb(img,a,b,sa,sb,fg,bg,0);
+		img.cursor.x=ox;
+		img.cursor.y=oy;
+		img.qbpos=sb;
 	}
 	return 0;
 }
@@ -395,7 +407,7 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 	case SC_MOVE_DOWN:
 		img.move_cursor(0,1);
 		break;
-	case SC_PAINT_BEGIN:
+	case SC_PAINT:
 		{
 			push_undo(img);
 			int fg,bg,fill;
@@ -417,7 +429,6 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		img.is_modified=true;
 		break;
 	case SC_PAINT_LINE_TO:
-		push_undo(img);
 		int fg,bg,fill;
 		fg=get_fg_color();
 		bg=get_bg_color();
@@ -434,7 +445,14 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			draw_line(img,img.pre_click.x,img.pre_click.y,img.cursor.x,img.cursor.y,fg,bg,fill);
 		}
 		break;
-	case SC_PAINT_MOVE:
+	case SC_PAINT_MOVE_UP:
+	case SC_PAINT_MOVE_DOWN:
+	case SC_PAINT_MOVE_LEFT:
+	case SC_PAINT_MOVE_RIGHT:
+	case SC_PAINT_MOVE_UPRIGHT:
+	case SC_PAINT_MOVE_UPLEFT:
+	case SC_PAINT_MOVE_DOWNRIGHT:
+	case SC_PAINT_MOVE_DOWNLEFT:
 		{
 			push_undo_time(img);
 			int fg,bg,fill;
@@ -446,11 +464,15 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			ox=img.cursor.x;
 			oy=img.cursor.y;
 			oqbpos=img.qbpos;
-			switch(sc.vkey){
-			case VK_LEFT: img.move_cursor(-1,0); break;
-			case VK_RIGHT: img.move_cursor(1,0); break;
-			case VK_UP: img.move_cursor(0,-1); break;
-			case VK_DOWN: img.move_cursor(0,1); break;
+			switch(sc.action){
+			case SC_PAINT_MOVE_UP: img.move_cursor(0,-1); break;
+			case SC_PAINT_MOVE_DOWN: img.move_cursor(0,1); break;
+			case SC_PAINT_MOVE_LEFT: img.move_cursor(-1,0); break;
+			case SC_PAINT_MOVE_RIGHT: img.move_cursor(1,0); break;
+			case SC_PAINT_MOVE_UPLEFT: img.move_cursor(-1,-1); break;
+			case SC_PAINT_MOVE_UPRIGHT: img.move_cursor(1,-1); break;
+			case SC_PAINT_MOVE_DOWNLEFT: img.move_cursor(-1,1); break;
+			case SC_PAINT_MOVE_DOWNRIGHT: img.move_cursor(1,1); break;
 			default: break;
 			}
 			if(img.qblock_mode){
@@ -555,6 +577,10 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 		img.selection.right=img.width;
 		img.is_modified=true;
 		break;
+	case SC_GRID:
+		img.show_grid=!img.show_grid;
+		img.is_modified=true;
+		break;
 	case SC_FLIP:
 		flip_clip(img);
 		break;
@@ -603,7 +629,6 @@ int image_keydown(UINT msg,int vkey)
 	if(!get_shortcut_action(sc))
 		return result;
 	result=do_action(sc,img);
-
 	return result;
 }
 
@@ -629,13 +654,21 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_GETDLGCODE:
 			return DLGC_WANTARROWS|DLGC_WANTCHARS|DLGC_WANTMESSAGE|DLGC_WANTALLKEYS;
 			break;
-		case WM_LBUTTONDBLCLK:
+		case WM_RBUTTONDOWN:
+		case WM_RBUTTONDBLCLK:
 		case WM_LBUTTONDOWN:
+		case WM_LBUTTONDBLCLK:
+		case WM_MBUTTONDOWN:
+		case WM_MBUTTONDBLCLK:
 			{
-				int x,y;
-				int flag=wparam;
+				short x,y;
+				int flags=wparam;
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
+				process_mouse_click(x,y,flags);
+			}
+			/*
+			{
 				IMAGE *img=get_current_image();
 				if(img !is null){
 					image_click(img,x,y);
@@ -649,6 +682,10 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				SetFocus(hwnd);
 				return 0;
 			}
+			*/
+			return 0;
+			break;
+		case WM_MOUSEWHEEL:
 			break;
 		case WM_MOUSEMOVE:
 			{
@@ -657,7 +694,7 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
 				flags=wparam;
-				process_mouse(flags,x,y);
+				process_mouse_move(x,y,flags);
 			}
 			break;
 		case WM_CHAR:
@@ -853,8 +890,8 @@ void do_shit(HWND hwnd)
 	//img.resize_image(8,10);
 	CheckDlgButton(hwnd,IDC_BG_CHK,BST_CHECKED);
 	bg_color=12;
-	img.qblock_mode=true;
 	version(_DEBUG){
+		img.qblock_mode=true;
 		img.cursor.x=28;
 		img.cursor.y=11;
 		{

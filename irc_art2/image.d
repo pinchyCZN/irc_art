@@ -113,6 +113,7 @@ nothrow:
 	int cell_width=8,cell_height=12;
 	bool is_modified;
 	bool qblock_mode;
+	bool show_grid;
 	DWORD time;
 	POINT cursor;
 	POINT qbpos,pre_qbpos;
@@ -140,83 +141,78 @@ nothrow:
 			return false;
 		return true;
 	}
+	bool get_index_pos(int x,int y,ref int index){
+		if(x>=width || x<0)
+			return false;
+		if(y>=height || y<0)
+			return false;
+		index=x+y*width;
+		if(index>=cells.length)
+			return false;
+		return true;
+	}
 	void set_char(int val,int x,int y){
-		if(!is_valid_pos(x,y))
+		int index;
+		if(!get_index_pos(x,y,index))
 			return;
-		int index=x+y*width;
 		cells[index].val=cast(WCHAR)val;
 		is_modified=true;
 	}
 	void set_fg(int val,int x,int y){
-		if(!is_valid_pos(x,y))
+		int index;
+		if(!get_index_pos(x,y,index))
 			return;
-		int index=x+y*width;
 		cells[index].fg=val;
 		is_modified=true;
 	}
 	void set_bg(int val,int x,int y){
-		if(!is_valid_pos(x,y))
+		int index;
+		if(!get_index_pos(x,y,index))
 			return;
-		int index=x+y*width;
 		cells[index].bg=val;
 		is_modified=true;
 	}
 	int get_fg(int x,int y){
-		if(!is_valid_pos(x,y))
+		int index;
+		if(!get_index_pos(x,y,index))
 			return -1;
-		int index=x+y*width;
 		return cells[index].fg;
 	}
 	int get_bg(int x,int y){
-		if(!is_valid_pos(x,y))
+		int index;
+		if(!get_index_pos(x,y,index))
 			return -1;
-		int index=x+y*width;
 		return cells[index].bg;
 	}
 	ushort get_char(int x,int y){
-		if(!is_valid_pos(x,y))
+		int index;
+		if(!get_index_pos(x,y,index))
 			return 0;
-		int index=x+y*width;
 		return cells[index].val;
 	}
 	void move_cursor(int x,int y){
-		if(qblock_mode){
-			bool exit=false;
-			qbpos.x+=x;
-			qbpos.y+=y;
-			if((qbpos.x==0 || qbpos.x==1)&& x)
-				exit=true;
-			if((qbpos.y==0 || qbpos.y==1)&& y)
-				exit=true;
-			if(qbpos.x==1 && x)
-				exit=true;
-			if(qbpos.x<0)
-				qbpos.x=1;
-			else if(qbpos.x>1)
-				qbpos.x=0;
-			if(qbpos.y<0)
-				qbpos.y=1;
-			else if(qbpos.y>1)
-				qbpos.y=0;
-			if(exit){
-				is_modified=true;
-				return;
-			}
-		}
-		cursor.x+=x;
-		cursor.y+=y;
-		if(cursor.x<0)
-			cursor.x=width-1;
-		if(cursor.y<0)
-			cursor.y=height-1;
-		if(cursor.x>=width)
-			cursor.x=0;
-		if(cursor.y>=height)
-			cursor.y=0;
-		if(cursor.x<0)
-			cursor.x=0;
-		if(cursor.y<0)
-			cursor.y=0;
+		int scale=2;
+		if(qblock_mode)
+			scale=1;
+		int a,b;
+		a=cursor.x*2;
+		b=cursor.y*2;
+		a+=qbpos.x;
+		b+=qbpos.y;
+		a+=x*scale;
+		b+=y*scale;
+		if(a>=(width*2))
+			a=(width*2)-1;
+		if(a<0)
+			a=0;
+		if(b>=(height*2))
+			b=(height*2)-1;
+		if(b<0)
+			b=0;
+		qbpos.x=a&1;
+		qbpos.y=b&1;
+		cursor.x=a/2;
+		cursor.y=b/2;
 		is_modified=true;
 	}
 	void resize_image(int w,int h){
@@ -274,11 +270,104 @@ nothrow:
 		return get_text_cells(clip.cells,clip.width,clip.height);
 	}
 };
+struct CUSTOM_WINDOW{
+	nothrow:
+	BYTE[] pixels; //BGR format
+	int width;
+	int height;
+	const ushort PIXEL_SIZE=4;
+	void set_size(int w,int h){
+		int len;
+		width=w;
+		height=h;
+		len=w*h*PIXEL_SIZE;
+		if(pixels.length!=len){
+			pixels.length=len;
+		}
+	}
+	bool get_index(int x,int y,ref int index){
+		if(x<0 || x>=width)
+			return false;
+		if(y<0 || y>=height)
+			return false;
+		x=x*PIXEL_SIZE;
+		y=(height-1)*width*PIXEL_SIZE-y*width*PIXEL_SIZE;
+		index=x+y;
+		if((index+PIXEL_SIZE-1)>=pixels.length)
+			return false;
+		else if(index<0)
+			return false;
+		return true;
+	}
+	void set_pixel(int x,int y,int RGB){
+		int index;
+		if(!get_index(x,y,index))
+			return;
+		pixels[index]=cast(BYTE)RGB;
+		pixels[index+1]=cast(BYTE)(RGB>>8);
+		pixels[index+2]=cast(BYTE)(RGB>>16);
+		pixels[index+3]=0;
+	}
+	int get_pixel(int x,int y){
+		int result=0;
+		int index;
+		if(!get_index(x,y,index))
+			return result;
+		result=pixels[index];
+		result|=pixels[index+1]<<8;
+		result|=pixels[index+2]<<16;
+		return result;
+	}
+	void draw_line(POINT a,POINT b,int function(int current_color,int x,int y)nothrow next_color){
+		if(a.x==b.x){ //vert
+			int i,start,end;
+			int x;
+			if(a.y<b.y){
+				start=a.y;
+				end=b.y;
+			}else{
+				start=b.y;
+				end=a.y;
+			}
+			x=a.x;
+			for(i=start;i<=end;i++){
+				int c=get_pixel(x,i);
+				c=next_color(c,x,i);
+				set_pixel(x,i,c);
+			}
+		}else if(a.y==b.y){ //hori
+			int i,start,end;
+			int y;
+			if(a.x<b.x){
+				start=a.x;
+				end=b.x;
+			}else{
+				start=b.x;
+				end=a.x;
+			}
+			y=a.y;
+			for(i=start;i<=end;i++){
+				int c=get_pixel(i,y);
+				c=next_color(c,i,y);
+				set_pixel(i,y,c);
+			}
+		}
+	}
+	void fill_rect(RECT r,int rgb){
+		int i,j;
+		for(i=r.left;i<r.right;i++){
+			for(j=r.top;j<r.bottom;j++){
+				set_pixel(i,j,rgb);
+			}
+		}
+	}
+};
 IMAGE[] images;
 IMAGE[] undo_buffer;
 IMAGE[] redo_buffer;
 int current_image=0;
 ubyte[] vgargb;
+CUSTOM_WINDOW image_window;
 
 void push_undo_time(IMAGE *img)
 {
@@ -349,7 +438,7 @@ void create_vga_font()
 {
 	import fonts;
 	const int vga_count=vga737_bin.length;
-	const int total=vga737_bin.length+block_elements.length;
+	const int total=vga737_bin.length;
 	if(vgargb.length==0)
 		vgargb.length=8*12*total;
 	if(vgargb.length>0){
@@ -361,10 +450,6 @@ void create_vga_font()
 					ubyte *font=vga737_bin.ptr;
 					ubyte *p;
 					int offset=k*12;
-					if(k>=vga_count){
-						font=block_elements.ptr;
-						offset=(k-vga_count)*12;
-					}
 					p=font+offset;
 					if(p[i]&(1<<(7-j)))
 						c=1;
@@ -378,7 +463,7 @@ void create_vga_font()
 	}
 }
 
-int image_click(IMAGE *img,int ox,int oy)
+int image_click(IMAGE *img,short ox,short oy)
 {
 	int result=false;
 	int x,y;
@@ -501,8 +586,220 @@ void scale_rect(ref RECT rect,int w,int h)
 	rect.top*=h;
 	rect.bottom*=h;
 }
+void draw_grid(IMAGE *img)
+{
+	int i;
+	for(i=0;i<img.width;i++){
+		int x,y;
+		x=i*img.cell_width;
+		y=img.height*img.cell_height;
+	}
+}
+
+void draw_cells2(int width,int height,
+				 int xoffset,int yoffset,
+				 CELL[] cells,int cwidth,int cheight,
+				 int cell_width,int cell_height)
+{
+	int x,y;
+	for(x=0;x<width;x++){
+		for(y=0;y<height;y++){
+			import fonts;
+			import palette;
+			int fg,bg;
+			WCHAR c;
+			int index;
+			if(x>=cwidth)
+				continue;
+			if(y>=cheight)
+				continue;
+			index=x+y*cwidth;
+			if(index>=cells.length)
+				continue;
+			fg=cells[index].fg;
+			bg=cells[index].bg;
+			c=cells[index].val;
+			index=get_font_offset(c);
+			index/=8;
+			if((index+11)>=vga737_bin.length || index<0){
+				index=0;
+			}
+			int i,j;
+			int x1,y1;
+			x1=x*cell_width;
+			y1=y*cell_height;
+			x1+=xoffset;
+			y1+=yoffset;
+			fg=get_rgb_color(fg);
+			bg=get_rgb_color(bg);
+			for(i=0;i<12;i++){
+				ubyte row=vga737_bin[index+i];
+				for(j=0;j<8;j++){
+					int bit=1<<(7-j);
+					if(bit&row)
+						image_window.set_pixel(x1+j,y1+i,fg);
+					else
+						image_window.set_pixel(x1+j,y1+i,bg);
+				}
+			}
+		}
+	}
+}
+int stipple_pattern_hori(int ccolor,int x,int y)
+{
+	int a;
+	BYTE r,g,b;
+	r=cast(BYTE)(ccolor>>16);
+	g=cast(BYTE)(ccolor>>8);
+	b=cast(BYTE)ccolor;
+	a=x&1;
+	if(a){
+		r+=0x2f;
+		b+=0x2f;
+		g+=0x2f;
+		ccolor=(r<<16)|(g<<8)|b;
+	}else{
+		r-=0x2f;
+		b-=0x2f;
+		g-=0x2f;
+		ccolor=(r<<16)|(g<<8)|b;
+	}
+	return ccolor;
+}
+int stipple_pattern_vert(int ccolor,int x,int y)
+{
+	int a;
+	BYTE r,g,b;
+	r=cast(BYTE)(ccolor>>16);
+	g=cast(BYTE)(ccolor>>8);
+	b=cast(BYTE)ccolor;
+	a=y&1;
+	if(a){
+		r+=0x2f;
+		b+=0x2f;
+		g+=0x2f;
+		ccolor=(r<<16)|(g<<8)|b;
+	}else{
+		r-=0x2f;
+		b-=0x2f;
+		g-=0x2f;
+		ccolor=(r<<16)|(g<<8)|b;
+	}
+	return ccolor;
+}
+void draw_stipple_rect(RECT rect)
+{
+	POINT a,b;
+	a.x=rect.left;
+	a.y=rect.top;
+	b.x=rect.right;
+	b.y=rect.top;
+	image_window.draw_line(a,b,&stipple_pattern_hori);
+	a.y=rect.bottom;
+	b.y=rect.bottom;
+	image_window.draw_line(a,b,&stipple_pattern_hori);
+	a.x=rect.left;
+	a.y=rect.top+1;
+	b.x=rect.left;
+	b.y=rect.bottom-1;
+	image_window.draw_line(a,b,&stipple_pattern_vert);
+	a.x=rect.right;
+	b.x=rect.right;
+	image_window.draw_line(a,b,&stipple_pattern_vert);
+}
+
+int paint_image2(HWND hwnd,HDC hdc)
+{
+	import core.stdc.stdio;
+	int result=FALSE;
+	int xoffset,yoffset;
+	const ubyte[] font=vgargb;
+	IMAGE *img;
+
+	if(font is null)
+		return result;
+	img=get_current_image();
+	if(img is null)
+		return result;
+
+	RECT rect;
+	int w,h,_w,_h;
+	//GetClientRect(hwnd,&rect);
+	//w=rect.right-rect.left;
+	//h=rect.bottom-rect.top;
+	_w=img.width*img.cell_width;
+	_h=img.height*img.cell_height;
+	//w=min(_w,w);
+	//h=min(_h,h);
+	w=_w;
+	h=_h;
+	image_window.set_size(w,h);
+	draw_cells2(img.width,img.height,0,0,
+				img.cells,img.width,img.height,
+				img.cell_width,img.cell_height);
+	//draw grid
+	{
+		if(img.show_grid){
+			int x,y;
+			for(x=0;x<img.width;x++){
+				POINT a,b;
+				a.x=x*img.cell_width;
+				a.y=0;
+				b.x=a.x;
+				b.y=img.height*img.cell_height;
+				image_window.draw_line(a,b,&stipple_pattern_vert);
+			}
+			for(y=0;y<img.height;y++){
+				POINT a,b;
+				a.x=0;
+				a.y=y*img.cell_height;
+				b.x=img.width*img.cell_width;
+				b.y=a.y;
+				image_window.draw_line(a,b,&stipple_pattern_vert);
+			}
+		}
+	}
+	//draw focus
+	{
+		int x,y;
+		if(img.qblock_mode){
+			rect.left=img.cursor.x*img.cell_width;
+			rect.left+=(img.cell_width/2)*img.qbpos.x;
+			rect.right=rect.left+img.cell_width/2;
+			rect.top=img.cursor.y*img.cell_height;
+			rect.top+=(img.cell_height/2)*img.qbpos.y;
+			rect.bottom=rect.top+(img.cell_height/2);
+		}else{
+			rect.left=img.cursor.x*img.cell_width;
+			rect.right=rect.left+img.cell_width;
+			rect.top=img.cursor.y*img.cell_height;
+			rect.bottom=rect.top+img.cell_height;
+		}
+		draw_stipple_rect(rect);
+	}
+	struct TMP{
+		BITMAPINFOHEADER bmiHeader;
+		DWORD[2] colors;
+	}
+	TMP bmi;
+	bmi.bmiHeader.biBitCount=32;
+	bmi.bmiHeader.biWidth=image_window.width;
+	bmi.bmiHeader.biHeight=image_window.height;
+	bmi.bmiHeader.biPlanes=1;
+	bmi.bmiHeader.biSize=bmi.sizeof;
+	SetDIBitsToDevice(hdc,0,0,image_window.width,image_window.height,
+					  0,0, //src xy
+					  0,image_window.height, //startscan,scanlines
+					  image_window.pixels.ptr,
+					  cast(BITMAPINFO*)&bmi,DIB_RGB_COLORS);
+
+	return 0;
+}
 int paint_image(HWND hwnd,HDC hdc)
 {
+	paint_image2(hwnd,hdc);
+	return 0;
+	/*
 	int result=FALSE;
 	int xoffset,yoffset;
 	const ubyte[] font=vgargb;
@@ -556,13 +853,13 @@ int paint_image(HWND hwnd,HDC hdc)
 	}
 	draw_focus_rect(img,hdc,rect);
 
-
 	if(img.selection_width>0 || img.selection_height>0){
 		rect=img.selection;
 		scale_rect(rect,img.cell_width,img.cell_height);
 		draw_focus_rect(img,hdc,rect);
 	}
 	return result;
+	*/
 }
 int is_bad_inverse(int color)
 {
