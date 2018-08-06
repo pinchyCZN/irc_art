@@ -92,14 +92,27 @@ int process_mouse_click(short x,short y,int flags)
 	int result=0;
 	int vkey=0;
 	bool ctrl,shift,alt;
+	IMAGE *img=get_current_image();
 	parse_flags(flags,vkey,ctrl,shift,alt);
+	if(img.clip.width>0 && img.clip.height>0){
+		if(vkey==VK_LBUTTON){
+			img.cursor.x=x/img.cell_width;
+			img.cursor.y=y/img.cell_height;
+			if(!ctrl){
+				img.clip.x=x/img.cell_width;
+				img.clip.y=y/img.cell_height;
+			}
+			img.is_modified=true;
+			result=TRUE;
+			return result;
+		}
+	}
 	SHORTCUT sc;
 	sc.vkey=vkey;
 	sc.ctrl=ctrl;
 	sc.shift=shift;
 	sc.alt=alt;
 	if(get_mouse_click_action(sc)){
-		IMAGE *img=get_current_image();
 		if(sc.action==SC_PAINT_LINE_TO)
 			push_undo(img);
 		image_click(img,x,y);
@@ -118,13 +131,16 @@ int process_mouse_move(short x,short y,int flags)
 		if(!(ctrl || shift || alt))
 			return result;
 	}
+	IMAGE *img=get_current_image();
+	if(img.clip.width>0 && img.clip.height>0){
+		return result;
+	}
 	SHORTCUT sc;
 	sc.vkey=vkey;
 	sc.ctrl=ctrl;
 	sc.shift=shift;
 	sc.alt=alt;
 	if(get_mouse_move_action(sc)){
-		IMAGE *img=get_current_image();
 		image_click(img,x,y);
 		result=do_action(sc,img);
 	}
@@ -134,7 +150,6 @@ int process_mouse_move(short x,short y,int flags)
 	//TEST SHIT
 	if(0)
 	{
-		IMAGE *img=get_current_image();
 		foreach(ref c;img.cells){
 			c.bg=1;
 			c.fg=1;

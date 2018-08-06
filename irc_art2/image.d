@@ -598,7 +598,7 @@ void draw_grid(IMAGE *img)
 
 void draw_cells2(int width,int height,
 				 int xoffset,int yoffset,
-				 CELL[] cells,int cwidth,int cheight,
+				 CELL[] cells,
 				 int cell_width,int cell_height)
 {
 	int x,y;
@@ -609,11 +609,7 @@ void draw_cells2(int width,int height,
 			int fg,bg;
 			WCHAR c;
 			int index;
-			if(x>=cwidth)
-				continue;
-			if(y>=cheight)
-				continue;
-			index=x+y*cwidth;
+			index=x+y*width;
 			if(index>=cells.length)
 				continue;
 			fg=cells[index].fg;
@@ -735,8 +731,23 @@ int paint_image2(HWND hwnd,HDC hdc)
 	h=_h;
 	image_window.set_size(w,h);
 	draw_cells2(img.width,img.height,0,0,
-				img.cells,img.width,img.height,
+				img.cells,
 				img.cell_width,img.cell_height);
+	if(img.clip.width>0 && img.clip.height>0){
+		draw_cells2(img.clip.width,img.clip.height,img.clip.x*img.cell_width,img.clip.y*img.cell_height,
+					img.clip.cells,
+					img.cell_width,img.cell_height);
+		rect.left=img.clip.x;
+		rect.top=img.clip.y;
+		rect.right=rect.left+img.clip.width;
+		rect.bottom=rect.top+img.clip.height;
+		rect.left*=img.cell_width;
+		rect.right*=img.cell_width;
+		rect.top*=img.cell_height;
+		rect.bottom*=img.cell_height;
+		draw_stipple_rect(rect);
+	}
+
 	//draw grid
 	{
 		if(img.show_grid){
