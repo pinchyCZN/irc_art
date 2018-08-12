@@ -291,3 +291,11 @@ ushort get_qblock(bool LR,bool TB,ushort element)
 	result=get_block_criteria(t1,t2,b1,b2);
 	return result;
 }
+bool get_element_corners(ushort element,ref bool t1,ref bool t2,ref bool b1,ref bool b2)
+{
+	bool result=true;
+	ubyte[8] bits;
+	bits=get_qblock_bits(element);
+	get_corners(bits,t1,t2,b1,b2);
+	return result;
+}
