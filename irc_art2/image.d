@@ -1316,30 +1316,26 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 }
 void fill_qb_area(IMAGE *img,int fg_color)
 {
-	int get_qb_color(int x,int y){
+	int get_qb_color(int x,int y,ref int bg){
 		int result=-1;
-		int bg=-1;
+		bg=img.get_bg(x/2,y/2);
 		int fg=img.get_fg(x/2,y/2);
 		ushort e=img.get_char(x/2,y/2);
 		bool t1,t2,b1,b2;
 		get_element_corners(e,t1,t2,b1,b2);
 		if(y&1){
 			if(x&1){
-				result=bg;
 				if(b2)
 					result=fg;
 			}else{
-				result=bg;
 				if(b1)
 					result=fg;
 			}
 		}else{
 			if(x&1){
-				result=bg;
 				if(t2)
 					result=fg;
 			}else{
-				result=bg;
 				if(t1)
 					result=fg;
 			}
@@ -1350,8 +1346,9 @@ void fill_qb_area(IMAGE *img,int fg_color)
 		int result=x;
 		int i;
 		for(i=x-1;i>=0;i--){
-			int c=get_qb_color(i,y);
-			if(c==color){
+			int bg;
+			int c=get_qb_color(i,y,bg);
+			if(c>=0){
 				result=i+1;
 				break;
 			}else if(i==0){
@@ -1362,8 +1359,8 @@ void fill_qb_area(IMAGE *img,int fg_color)
 		return result;
 	}
 	void check_neighbors(int x,int y,int color,ref POINT[] list){
-		void append(int _c,int _x,int _y){
-			if(color!=_c && _c<0){
+		void append(int _c,int _bg,int _x,int _y){
+			if(_c<0 && _bg!=color){
 				POINT p;
 				p.x=_x;
 				p.y=_y;
@@ -1378,28 +1375,38 @@ void fill_qb_area(IMAGE *img,int fg_color)
 					list~=p;
 			}
 		}
-		int c;
+		int c,bg;
 		if(img.is_valid_pos(x/2,(y-1)/2)){
-			c=get_qb_color(x,y-1);
-			append(c,x,y-1);
+			c=get_qb_color(x,y-1,bg);
+			append(c,bg,x,y-1);
 		}
 		if(img.is_valid_pos(x/2,(y+1)/2)){
-			c=get_qb_color(x,y+1);
-			append(c,x,y+1);
+			c=get_qb_color(x,y+1,bg);
+			append(c,bg,x,y+1);
 		}
 	}
 	void set_qblock(int x,int y,int c){
+		int bg;
+		bool t1,t2,b1,b2;
 		ushort e=img.get_char(x/2,y/2);
-		e=get_qblock(!(x&1),!(y&1),e);
-		img.set_char(e,x/2,y/2);
-		img.set_fg(c,x/2,y/2);
+		get_element_corners(e,t1,t2,b1,b2);
+		int fg=img.get_fg(x/2,y/2);
+		bool has_qb=t1||t2||b1||b2;
+		if((fg==c && has_qb) || (!has_qb)){
+			e=get_qblock(!(x&1),!(y&1),e);
+			img.set_char(e,x/2,y/2);
+			img.set_fg(c,x/2,y/2);
+		}else{
+			img.set_bg(c,x/2,y/2);
+		}
 	}
 	void fill_line(int x,int y,int color,ref POINT[]list){
 		int i,max;
 		max=img.width*2;
 		for(i=x;i<max;i++){
-			int c=get_qb_color(i,y);
-			if(c!=color && c<0){
+			int c,bg;
+			c=get_qb_color(i,y,bg);
+			if(c<0){
 				check_neighbors(i,y,color,list);
 				set_qblock(i,y,color);
 			}else{
@@ -1417,7 +1424,6 @@ void fill_qb_area(IMAGE *img,int fg_color)
 	_p.x=get_row_start(sx,sy,fg_color);
 	_p.y=sy;
 	list~=_p;
-	int count=0;
 	while(list.length>0){
 		POINT[] tmp;
 		foreach(p;list){
