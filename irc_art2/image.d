@@ -1314,6 +1314,130 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 		}
 	}
 }
+void fill_qb_area(IMAGE *img,int fg_color)
+{
+	int get_qb_color(int x,int y,ref int bg){
+		int result=-1;
+		bg=img.get_bg(x/2,y/2);
+		int fg=img.get_fg(x/2,y/2);
+		ushort e=img.get_char(x/2,y/2);
+		bool t1,t2,b1,b2;
+		get_element_corners(e,t1,t2,b1,b2);
+		if(y&1){
+			if(x&1){
+				if(b2)
+					result=fg;
+			}else{
+				if(b1)
+					result=fg;
+			}
+		}else{
+			if(x&1){
+				if(t2)
+					result=fg;
+			}else{
+				if(t1)
+					result=fg;
+			}
+		}
+		return result;
+	}
+	int get_row_start(int x,int y,int color){
+		int result=x;
+		int i;
+		for(i=x-1;i>=0;i--){
+			int bg;
+			int c=get_qb_color(i,y,bg);
+			if(c>=0){
+				result=i+1;
+				break;
+			}else if(i==0){
+				result=0;
+				break;
+			}
+		}
+		return result;
+	}
+	void check_neighbors(int x,int y,int color,ref POINT[] list){
+		void append(int _c,int _bg,int _x,int _y){
+			if(_c<0 && _bg!=color){
+				POINT p;
+				p.x=_x;
+				p.y=_y;
+				bool found=false;
+				foreach(_p;list){
+					if(_p==p){
+						found=true;
+						break;
+					}
+				}
+				if(!found)
+					list~=p;
+			}
+		}
+		int c,bg;
+		if(img.is_valid_pos(x/2,(y-1)/2)){
+			c=get_qb_color(x,y-1,bg);
+			append(c,bg,x,y-1);
+		}
+		if(img.is_valid_pos(x/2,(y+1)/2)){
+			c=get_qb_color(x,y+1,bg);
+			append(c,bg,x,y+1);
+		}
+	}
+	void set_qblock(int x,int y,int c){
+		int bg;
+		bool t1,t2,b1,b2;
+		ushort e=img.get_char(x/2,y/2);
+		get_element_corners(e,t1,t2,b1,b2);
+		int fg=img.get_fg(x/2,y/2);
+		bool has_qb=t1||t2||b1||b2;
+		if((fg==c && has_qb) || (!has_qb)){
+			e=get_qblock(!(x&1),!(y&1),e);
+			img.set_char(e,x/2,y/2);
+			img.set_fg(c,x/2,y/2);
+		}else{
+			img.set_bg(c,x/2,y/2);
+		}
+	}
+	void fill_line(int x,int y,int color,ref POINT[]list){
+		int i,max;
+		max=img.width*2;
+		for(i=x;i<max;i++){
+			int c,bg;
+			c=get_qb_color(i,y,bg);
+			if(c<0){
+				check_neighbors(i,y,color,list);
+				set_qblock(i,y,color);
+			}else{
+				break;
+			}
+		}
+	}
+	int sx,sy;
+	sx=img.cursor.x*2+img.qbpos.x;
+	sy=img.cursor.y*2+img.qbpos.y;
+	if(fg_color<0)
+		return;
+	POINT[] list;
+	POINT _p;
+	_p.x=get_row_start(sx,sy,fg_color);
+	_p.y=sy;
+	list~=_p;
+	while(list.length>0){
+		POINT[] tmp;
+		foreach(p;list){
+			int tx=get_row_start(p.x,p.y,fg_color);
+			fill_line(tx,p.y,fg_color,tmp);
+		}
+		list.length=0;
+		foreach(p;tmp){
+			int tx=get_row_start(p.x,p.y,fg_color);
+			fill_line(tx,p.y,fg_color,list);
+		}
+	}
+}
+
 void do_fill(IMAGE *img,int fg,int bg,int fill_char)
 {
 	if(img is null)
@@ -1322,7 +1446,10 @@ void do_fill(IMAGE *img,int fg,int bg,int fill_char)
 	sw=img.selection_width();
 	sh=img.selection_height();
 	if(sw<=0 || sh<=0){
-		fill_area(img,fg,bg,fill_char);		
+		if(img.qblock_mode)
+			fill_qb_area(img,fg);
+		else
+			fill_area(img,fg,bg,fill_char);
 	}else{
 		int i,j;
 		for(i=0;i<sh;i++){

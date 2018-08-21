@@ -542,12 +542,18 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 	case SC_ASCII:
 		{
 			push_undo_time(img);
+			int fg,bg;
 			int x,y;
 			int key_char=sc.data;
 			x=img.cursor.x;
 			y=img.cursor.y;
 			img.set_char(key_char,x,y);
-			img.set_fg(fg_color,x,y);
+			fg=get_fg_color();
+			bg=get_bg_color();
+			if(fg>=0)
+				img.set_fg(fg,x,y);
+			if(bg>=0)
+				img.set_bg(bg,x,y);
 			img.move_cursor(1,0);
 			img.clear_selection();
 		}
@@ -912,6 +918,7 @@ void do_shit(HWND hwnd)
 	IMAGE *img=get_current_image();
 	//img.resize_image(8,10);
 	CheckDlgButton(hwnd,IDC_BG_CHK,BST_CHECKED);
+	CheckDlgButton(hwnd,IDC_FG_CHK,BST_CHECKED);
 	bg_color=12;
 	version(_DEBUG){
 		img.qblock_mode=true;
@@ -920,7 +927,7 @@ void do_shit(HWND hwnd)
 		{
 		int i;
 		for(i=0;i<30;i++){
-			img.set_char(0x2580+i,i,0);
+		//	img.set_char(0x2580+i,i,0);
 		}
 		}
 		return;
