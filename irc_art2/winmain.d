@@ -374,7 +374,15 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			SC_DLG_PARAM scp;
 			scp.hparent=hmaindlg;
 			scp.hinstance=ghinstance;
-			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_keyshort,cast(LPARAM)&scp);
+			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_ascii_keymap,cast(LPARAM)&scp);
+		}
+		break;
+	case SC_OPEN_FUNC_SC_DLG:
+		{
+			SC_DLG_PARAM scp;
+			scp.hparent=hmaindlg;
+			scp.hinstance=ghinstance;
+			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_func_keymap,cast(LPARAM)&scp);
 		}
 		break;
 	case SC_OPEN_TEXT_DLG:

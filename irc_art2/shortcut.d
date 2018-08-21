@@ -22,9 +22,13 @@ CONTROL_ANCHOR[] keyshort_anchor=[
 	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
 ];
 
-WIN_REL_POS keyshort_win_pos;
-wstring[] DLG_COLS=["val","char","key"];
-enum{COL_VAL=0,COL_CHAR=1,COL_KEY=2};
+WIN_REL_POS ascii_keymap_win_pos;
+wstring[] ASCII_DLG_COLS=["val","char","key"];
+enum{ASCII_COL_VAL=0,ASCII_COL_CHAR=1,ASCII_COL_KEY=2};
+
+WIN_REL_POS func_keymap_win_pos;
+wstring[] FUNC_DLG_COLS=["ID","key","description"];
+enum{FUNC_COL_VAL=0,FUNC_COL_KEY=1,FUNC_COL_DESC=2};
 
 struct SHORTCUT{
 	int action;
@@ -87,11 +91,54 @@ enum{
 	SC_QUIT,
 	SC_NONE,
 }
+struct SC_INFO{
+	const int val;
+	const wstring desc;
+}
+SC_INFO[] sc_info=[
+	{val:SC_QUIT,desc:"QUIT"},
+	{val:SC_OPEN_TEXT_DLG,desc:"open text dialog"},
+	{val:SC_OPEN_CHAR_SC_DLG,desc:"open ascii shortcut dialog"},
+	{val:SC_OPEN_FUNC_SC_DLG,desc:"open function shortcut dialog"},
+	{val:SC_UNDO,desc:"UNDO"},
+	{val:SC_REDO,desc:"REDO"},
+	{val:SC_COPY,desc:"COPY"},
+	{val:SC_PASTE,desc:"PASTE"},
+	{val:SC_PASTE_INTO_SELECTION,desc:"paste into selection"},
+	{val:SC_CHK_FG,desc:"check foreground FG"},
+	{val:SC_CHK_BG,desc:"check background BG"},
+	{val:SC_CHK_FILL,desc:"check fill char"},
+	{val:SC_SELECT_ALL,desc:"SELECT ALL"},
+	{val:SC_GRID,desc:"GRID"},
+	{val:SC_FILL,desc:"FILL"},
+	{val:SC_FLIP,desc:"FLIP"},
+	{val:SC_ROTATE,desc:"ROTATE"},
+	{val:SC_RETURN,desc:"return key"},
+	{val:SC_BACKSPACE,desc:"backspace"},
+	{val:SC_DELETE,desc:"DELETE"},
+	{val:SC_MOVE_HOME,desc:"move home"},
+	{val:SC_MOVE_END,desc:"move end"},
+	{val:SC_MOVE_UP,desc:"move up"},
+	{val:SC_MOVE_DOWN,desc:"move down"},
+	{val:SC_MOVE_LEFT,desc:"move left"},
+	{val:SC_MOVE_RIGHT,desc:"move right"},
+	{val:SC_PAINT,desc:"PAINT"},
+	{val:SC_PAINT_MOVE_UP,desc:"paint move up"},
+	{val:SC_PAINT_MOVE_DOWN,desc:"paint move down"},
+	{val:SC_PAINT_MOVE_LEFT,desc:"paint move left"},
+	{val:SC_PAINT_MOVE_RIGHT,desc:"paint move right"},
+	{val:SC_PAINT_MOVE_UPRIGHT,desc:"paint move up+right"},
+	{val:SC_PAINT_MOVE_UPLEFT,desc:"paint move up+left"},
+	{val:SC_PAINT_MOVE_DOWNLEFT,desc:"paint move down+left"},
+	{val:SC_PAINT_MOVE_DOWNRIGHT,desc:"paint move down+right"},
+	{val:SC_PAINT_QB_MODE,desc:"QB quartblock mode"},
+];
+
 SHORTCUT[] sc_map=[
 	{action:SC_QUIT,vkey:VK_ESCAPE},
 	{action:SC_OPEN_TEXT_DLG,vkey:VK_INSERT},
 	{action:SC_OPEN_CHAR_SC_DLG,vkey:VK_INSERT,ctrl:true},
-	{action:SC_OPEN_FUNC_SC_DLG,vkey:VK_F12},
+	{action:SC_OPEN_FUNC_SC_DLG,vkey:VK_F9},
 	{action:SC_UNDO,vkey:'Z',ctrl:true},
 	{action:SC_REDO,vkey:'Y',ctrl:true},
 	{action:SC_COPY,vkey:'C',ctrl:true},
@@ -316,15 +363,15 @@ KEYMAP[] keylist=[
 	{0xFE,"VK_OEM_CLEAR"},
 ];
 
-void init_lview(HWND hparent,HWND hlview)
+void init_lview(HWND hparent,HWND hlview,wstring[] cols)
 {
 	try{
 	int i;
-	for(i=0;i<DLG_COLS.length;i++){
+	for(i=0;i<cols.length;i++){
 		LV_COLUMN col;
 		col.mask = LVCF_WIDTH|LVCF_TEXT;
 		col.cx = 100;
-		col.pszText = cast(WCHAR*)DLG_COLS[i].ptr;
+		col.pszText = cast(WCHAR*)cols[i].ptr;
 			ListView_InsertColumn(hlview,i,&col);
 	}
 	ListView_SetExtendedListViewStyle(hlview,LVS_EX_FULLROWSELECT);
@@ -358,40 +405,128 @@ void print_hex(WCHAR[] str,int val)
 		str[index++]=0;
 	str[$-1]=0;
 }
-void fill_list(HWND hlview)
+const (WCHAR *)wstrstri(const WCHAR *str1,const WCHAR *str2)
 {
-	try{
-	ListView_DeleteAllItems(hlview);
-	int i,index=0;
-	for(i=0x2580;i<=0x259F;i++){
-		WCHAR[20] str;
-		LV_ITEM lvitem;
-		lvitem.mask = LVIF_TEXT;
-		lvitem.pszText = str.ptr;
-		lvitem.iItem = index;
-		lvitem.iSubItem = 0;
-		lvitem.lParam = 0;
-		print_hex(str,i);
-		ListView_InsertItem(hlview,&lvitem);
-		str[0]=cast(WCHAR)i;
-		str[1]=0;
-		ListView_SetItemText(hlview,index,1,str.ptr);
+	import core.stdc.ctype;
+	WCHAR *result=null;
+	int index1=0,index2=0;
+	while(1){
+		WCHAR a,b;
+		a=str1[index1];
+		b=str2[index2];
+		if(0==b){
+			if(index2>1)
+				result=cast(WCHAR*)(str1+index1-index2);
+			break;
+		}
+		index1++;
+		if(0==a)
+			break;
+		a=cast(WCHAR)tolower(a);
+		b=cast(WCHAR)tolower(b);
+		if(a==b)
+			index2++;
+		else
+			index2=0;
+
+	}
+	return result;
+}
+void fill_ascii_sc_list(HWND hlview,const WCHAR *filter)
+{
+	wstring get_key_text(int i){
 		foreach(sc;sc_ascii){
 			if(sc.data==i){
 				wstring tmp=get_sc_key_text(sc);
 				tmp~='\0';
-				ListView_SetItemText(hlview,index,2,cast(wchar*)tmp.ptr);
+				return tmp;
+			}
+		}
+		return "\0";
+	}
+	try{
+	ListView_DeleteAllItems(hlview);
+	int i,index=0;
+	for(i=0x2580;i<=0x259F;i++){
+		WCHAR[8] hex_str;
+		WCHAR[2] char_str;
+		wstring sc_text;
+		LV_ITEM lvitem;
+		print_hex(hex_str,i);
+		char_str[0]=cast(WCHAR)i;
+		char_str[1]=0;
+		sc_text=get_key_text(i);
+		if(filter[0]!=0){
+			if(wstrstri(cast(const WCHAR*)char_str,filter))
+				continue;
+			if(wstrstri(cast(const WCHAR*)hex_str,filter))
+				continue;
+			if(wstrstri(sc_text.ptr,filter))
+				continue;
+		}
+		
+
+		lvitem.mask = LVIF_TEXT;
+		lvitem.pszText = hex_str.ptr;
+		lvitem.iItem = index;
+		lvitem.iSubItem = 0;
+		lvitem.lParam = 0;
+		ListView_InsertItem(hlview,&lvitem);
+		ListView_SetItemText(hlview,index,ASCII_COL_CHAR,char_str.ptr);
+		foreach(sc;sc_ascii){
+			if(sc.data==i){
+				wstring tmp=get_sc_key_text(sc);
+				tmp~='\0';
+				ListView_SetItemText(hlview,index,ASCII_COL_VAL,cast(wchar*)tmp.ptr);
 				break;
 			}
 		}
-
-		index++;
+		if(filter[0]!=0){
+			//if(wstrstri(str,filter))
+		}else{
+			index++;
+		}
 
 	}
 	}catch(Exception s){
 	}
-	update_col_width(hlview,COL_KEY);
+	update_col_width(hlview,ASCII_COL_KEY);
 }
+
+void fill_func_sc_list(HWND hlview)
+{
+	try{
+		ListView_DeleteAllItems(hlview);
+		int i,index=0;
+		foreach(sc;sc_map){
+			WCHAR[20] str;
+			LV_ITEM lvitem;
+			lvitem.mask = LVIF_TEXT;
+			print_hex(str,sc.action);
+			lvitem.pszText = str.ptr;
+			lvitem.iItem = index;
+			lvitem.iSubItem = 0;
+			lvitem.lParam = 0;
+			ListView_InsertItem(hlview,&lvitem);
+			foreach(info;sc_info){
+				if(info.val==sc.action){
+					ListView_SetItemText(hlview,index,FUNC_COL_DESC,cast(LPTSTR)info.desc.ptr);
+					break;
+				}
+			}
+			wstring tmp=get_sc_key_text(sc);
+			tmp~='\0';
+			ListView_SetItemText(hlview,index,FUNC_COL_KEY,cast(wchar*)tmp.ptr);
+
+			index++;
+
+		}
+	}catch(Exception s){
+	}
+	update_col_width(hlview,FUNC_COL_KEY);
+	update_col_width(hlview,FUNC_COL_DESC);
+}
+
 int get_focused_item(HWND hlistview)
 {
 	int i,count;
@@ -501,8 +636,8 @@ void show_key_dlg(HWND hwnd,HWND hlview,int edit)
 			wstring str=get_sc_key_text(scp.sc);
 			str~='\0';
 			try{
-				ListView_SetItemText(hlview,item,COL_KEY,cast(wchar*)str.ptr);
-				update_col_width(hlview,COL_KEY);
+				ListView_SetItemText(hlview,item,ASCII_COL_KEY,cast(wchar*)str.ptr);
+				update_col_width(hlview,ASCII_COL_KEY);
 			}catch(Exception e){
 			}
 		}
@@ -528,7 +663,7 @@ void delete_selection(HWND hlview)
 			for(i=0;i<count;i++){
 				int state=ListView_GetItemState(hlview,i,LVIS_SELECTED);
 				if(state==LVIS_SELECTED){
-					ListView_SetItemText(hlview,i,COL_KEY,cast(wchar*)"");
+					ListView_SetItemText(hlview,i,ASCII_COL_KEY,cast(wchar*)"");
 				}
 			}
 		}
@@ -537,8 +672,9 @@ void delete_selection(HWND hlview)
 	}
 }
 extern (Windows)
-BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
+	static int last_selection=0;
 	switch(msg){
 	case WM_INITDIALOG:
 		SC_DLG_PARAM *sc=cast(SC_DLG_PARAM*)lparam;
@@ -547,14 +683,14 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		else
 			sc_param=*sc;
 		HWND hlview=GetDlgItem(hwnd,IDC_KEYLIST);
-		init_lview(hwnd,hlview);
+		init_lview(hwnd,hlview,ASCII_DLG_COLS);
 		HFONT hf=get_dejavu_font();
 		if(hf)
 			SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
-		fill_list(hlview);
+		fill_ascii_sc_list(hlview,"");
 		init_grippy(hwnd,IDC_GRIPPY);
 		anchor_init(hwnd,keyshort_anchor);
-		restore_win_rel_position(sc_param.hparent,hwnd,keyshort_win_pos);
+		restore_win_rel_position(sc_param.hparent,hwnd,ascii_keymap_win_pos);
 		SetFocus(hlview);
 		break;
 	case WM_SIZE:
@@ -596,8 +732,18 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		switch(idc){
 		case IDCANCEL:
 		case IDOK:
-			save_win_rel_position(sc_param.hparent,hwnd,keyshort_win_pos);
+			save_win_rel_position(sc_param.hparent,hwnd,ascii_keymap_win_pos);
 			EndDialog(hwnd,0);
+			break;
+		case IDC_EDIT:
+			show_key_dlg(hwnd,GetDlgItem(hwnd,IDC_KEYLIST),true);
+			break;
+		case IDC_ADD:
+			break;
+		case IDC_FILTER:
+			WCHAR[40] tmp;
+			GetDlgItemText(hwnd,IDC_FILTER,tmp.ptr,tmp.length);
+			fill_ascii_sc_list(GetDlgItem(hwnd,IDC_KEYLIST),tmp.ptr);
 			break;
 		default:
 			break;
@@ -610,15 +756,91 @@ BOOL dlg_keyshort(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 	return FALSE;
 }
 
+extern (Windows)
+BOOL dlg_func_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
+{
+	static int last_selection=0;
+	switch(msg){
+		case WM_INITDIALOG:
+			SC_DLG_PARAM *sc=cast(SC_DLG_PARAM*)lparam;
+			if(sc is null)
+				memset(&sc_param,0,sc_param.sizeof);
+			else
+				sc_param=*sc;
+			HWND hlview=GetDlgItem(hwnd,IDC_KEYLIST);
+			init_lview(hwnd,hlview,FUNC_DLG_COLS);
+			HFONT hf=get_dejavu_font();
+			if(hf)
+				SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
+			fill_func_sc_list(hlview);
+			init_grippy(hwnd,IDC_GRIPPY);
+			anchor_init(hwnd,keyshort_anchor);
+			restore_win_rel_position(sc_param.hparent,hwnd,func_keymap_win_pos);
+			SetFocus(hlview);
+			break;
+		case WM_SIZE:
+			anchor_resize(hwnd,keyshort_anchor);
+			break;
+		case WM_NOTIFY:
+			int idc=wparam;
+			if(idc==IDC_KEYLIST){
+				LPNMLISTVIEW nlv=cast(LPNMLISTVIEW)lparam;
+				if(nlv is null)
+					break;
+				HWND hlview=nlv.hdr.hwndFrom;
+				switch(nlv.hdr.code){
+					case LVN_KEYDOWN:
+						LV_KEYDOWN *key=cast(LV_KEYDOWN*)lparam;
+						if(!(key.wVKey==VK_F2
+							 || key.wVKey==VK_INSERT
+							 || key.wVKey==VK_DELETE))
+							break;
+						if(key.wVKey==VK_DELETE){
+							delete_selection(hlview);
+							break;
+						}
+						int edit=false;
+						if(key.wVKey==VK_F2)
+							edit=true;
+						show_key_dlg(hwnd,hlview,edit);
+						break;
+					case NM_DBLCLK:
+						show_key_dlg(hwnd,hlview,true);
+						break;
+					default:
+						break;
+				}
+			}
+			break;
+		case WM_COMMAND:
+			int idc=LOWORD(wparam);
+			switch(idc){
+				case IDCANCEL:
+				case IDOK:
+					save_win_rel_position(sc_param.hparent,hwnd,func_keymap_win_pos);
+					EndDialog(hwnd,0);
+					break;
+				default:
+					break;
+			}
+			break;
+		default:
+			break;
+	}
+
+	return FALSE;
+}
+
+
 int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 {
 	int result=FALSE;
 	WCHAR[40] tmp;
 	tmp[0]=0;
-	get_item_text(hlview,tmp,item,COL_CHAR);
+	get_item_text(hlview,tmp,item,ASCII_COL_CHAR);
 	scp.sc.data=tmp[0];
 	memset(tmp.ptr,0,tmp.sizeof);
-	get_item_text(hlview,tmp,item,COL_KEY);
+	get_item_text(hlview,tmp,item,ASCII_COL_KEY);
 	try{
 	if(StrStrW(tmp.ptr,"ctrl"))
 		scp.sc.ctrl=1;
