@@ -1181,6 +1181,30 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 	version(_DEBUG)
 	{
 		debug_console(hmaindlg);
+		/*
+		WCHAR[40] tmp;
+		int i;
+		for(i=-1;i<10;i++){
+			import std.math;
+			int val;
+			if(i<0)
+				val=0;
+			else
+				val=12345*(pow(10,i));
+			if(i<0)
+				val=-123;
+			print_int(tmp,val);
+			printf("%S\n%u\n\n",tmp.ptr,val);
+		}
+		while(1){
+			import console;
+			Sleep(10);
+			i=get_key();
+			if(i>0)
+				break;
+		}
+		exit(0);
+		*/
 	}
 	while (1){
 		int ret;

@@ -16,7 +16,7 @@ nothrow:
 CONTROL_ANCHOR[] keyshort_anchor=[
 	{IDC_ADD,ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDC_EDIT,ANCHOR_LEFT|ANCHOR_BOTTOM},
-	{IDC_DELETE,ANCHOR_LEFT|ANCHOR_BOTTOM},
+	{IDC_FILTER,ANCHOR_LEFT|ANCHOR_BOTTOM},
 	{IDCANCEL,ANCHOR_RIGHT|ANCHOR_BOTTOM},
 	{IDC_KEYLIST,ANCHOR_RIGHT|ANCHOR_LEFT|ANCHOR_BOTTOM|ANCHOR_TOP},
 	{IDC_GRIPPY,ANCHOR_RIGHT|ANCHOR_BOTTOM},
@@ -27,8 +27,8 @@ wstring[] ASCII_DLG_COLS=["val","char","key"];
 enum{ASCII_COL_VAL=0,ASCII_COL_CHAR=1,ASCII_COL_KEY=2};
 
 WIN_REL_POS func_keymap_win_pos;
-wstring[] FUNC_DLG_COLS=["ID","key","description"];
-enum{FUNC_COL_VAL=0,FUNC_COL_KEY=1,FUNC_COL_DESC=2};
+wstring[] FUNC_DLG_COLS=["ID","description","key"];
+enum{FUNC_COL_VAL=0,FUNC_COL_DESC=1,FUNC_COL_KEY=2};
 
 struct SHORTCUT{
 	int action;
@@ -38,9 +38,11 @@ struct SHORTCUT{
 	bool alt;
 	WCHAR data;
 }
-struct SHORTCUT_PARAM{
+struct SHORTCUT_DLG_PARAM{
 	SHORTCUT sc;
-	int edit;
+	WCHAR *title;
+	WCHAR *data;
+	int is_edit;
 }
 enum{
 	SC_ASCII=0,
@@ -403,7 +405,40 @@ void print_hex(WCHAR[] str,int val)
 	}
 	if(index<str.length)
 		str[index++]=0;
-	str[$-1]=0;
+	if(str.length>0)
+		str[$-1]=0;
+}
+void print_int(WCHAR[] str,uint val)
+{
+	int index=0;
+	int last_nonzero=0;
+	while(1){
+		uint tmp;
+		if(index>=str.length)
+			break;
+		tmp=val%10;
+		if(tmp!=0)
+			last_nonzero=index;
+		str[index++]=cast(WCHAR)('0'+tmp);
+		val=val/10;
+		//4 294 967 295
+		if(index>=10)
+			break;
+	}
+	int i,limit;
+	limit=(last_nonzero+1)/2;
+	for(i=0;i<limit;i++){
+		WCHAR a,b;
+		a=str[i];
+		b=str[last_nonzero-i];
+		str[last_nonzero-i]=a;
+		str[i]=b;
+	}
+	last_nonzero++;
+	if(last_nonzero<str.length)
+		str[last_nonzero]=0;
+	if(str.length>0)
+		str[$-1]=0;
 }
 const (WCHAR *)wstrstri(const WCHAR *str1,const WCHAR *str2)
 {
@@ -477,7 +512,7 @@ void fill_ascii_sc_list(HWND hlview,const WCHAR *filter)
 			if(sc.data==i){
 				wstring tmp=get_sc_key_text(sc);
 				tmp~='\0';
-				ListView_SetItemText(hlview,index,ASCII_COL_VAL,cast(wchar*)tmp.ptr);
+				ListView_SetItemText(hlview,index,ASCII_COL_KEY,cast(wchar*)tmp.ptr);
 				break;
 			}
 		}
@@ -502,7 +537,7 @@ void fill_func_sc_list(HWND hlview)
 			WCHAR[20] str;
 			LV_ITEM lvitem;
 			lvitem.mask = LVIF_TEXT;
-			print_hex(str,sc.action);
+			print_int(str,sc.action);
 			lvitem.pszText = str.ptr;
 			lvitem.iItem = index;
 			lvitem.iSubItem = 0;
@@ -554,6 +589,13 @@ int get_item_text(HWND hlview,WCHAR[] str,int item,int subitem)
 	if(str[0]!=0)
 		result=TRUE;
 	return result;
+}
+void set_item_text(HWND hlview,const WCHAR *str,int item,int subitem)
+{
+	try{
+		ListView_SetItemText(hlview,item,subitem,cast(wchar*)str);
+	}catch(Exception e){
+	}
 }
 struct SC_DLG_PARAM{
 	HINSTANCE hinstance;
@@ -622,25 +664,46 @@ void update_ascii_map(const SHORTCUT sc)
 		sc_ascii[$-1]=sc;
 	}
 }
-void show_key_dlg(HWND hwnd,HWND hlview,int edit)
+void update_func_map(const SHORTCUT sc)
 {
-	int item=get_focused_item(hlview);
-	if(item<0 && edit)
-		return;
-	SHORTCUT_PARAM scp;
-	scp.edit=edit;
-	if(get_shortcut_info(hlview,item,&scp)){
-		int r=DialogBoxParam(sc_param.hinstance,MAKEINTRESOURCE(IDD_SHORTCUT),hwnd,&dlg_enter_key,cast(LPARAM)&scp);
-		if(r){
-			update_ascii_map(scp.sc);
-			wstring str=get_sc_key_text(scp.sc);
-			str~='\0';
-			try{
-				ListView_SetItemText(hlview,item,ASCII_COL_KEY,cast(wchar*)str.ptr);
-				update_col_width(hlview,ASCII_COL_KEY);
-			}catch(Exception e){
-			}
+	int found=false;
+	foreach(ref tmp;sc_map){
+		if(tmp.action==sc.action){
+			found=true;
+			tmp=sc;
+			break;
 		}
+	}
+	if(!found){
+		sc_map.length++;
+		sc_map[$-1]=sc;
+	}
+}
+void show_key_dlg(HWND hwnd,HWND hlview,bool is_edit,int col_title,int col_key,int col_data,
+				  void function(const SHORTCUT)nothrow update_sc)
+{
+	WCHAR[80] title;
+	WCHAR[20] data;
+	SHORTCUT_DLG_PARAM scd;
+	int index;
+	index=get_focused_item(hlview);
+	if(index<0)
+		return;
+	get_item_text(hlview,title,index,col_title);
+	get_item_text(hlview,data,index,col_data);
+	get_shortcut_info(hlview,index,col_key,&scd.sc);
+	scd.title=title.ptr;
+	scd.data=data.ptr;
+	scd.is_edit=is_edit;
+
+	int r=DialogBoxParam(sc_param.hinstance,MAKEINTRESOURCE(IDD_SHORTCUT),hwnd,&dlg_enter_key,cast(LPARAM)&scd);
+	if(r){
+		if(update_sc)
+			update_sc(scd.sc);
+		wstring str=get_sc_key_text(scd.sc);
+		str~='\0';
+		set_item_text(hlview,str.ptr,index,col_key);
+		update_col_width(hlview,col_key);
 	}
 }
 void delete_selection(HWND hlview)
@@ -714,13 +777,13 @@ BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					delete_selection(hlview);
 					break;
 				}
-				int edit=false;
+				bool edit=false;
 				if(key.wVKey==VK_F2)
 					edit=true;
-				show_key_dlg(hwnd,hlview,edit);
+				show_key_dlg(hwnd,hlview,edit,ASCII_COL_CHAR,ASCII_COL_KEY,ASCII_COL_VAL,&update_ascii_map);
 				break;
 			case NM_DBLCLK:
-				show_key_dlg(hwnd,hlview,true);
+				show_key_dlg(hwnd,hlview,true,ASCII_COL_CHAR,ASCII_COL_KEY,ASCII_COL_VAL,&update_ascii_map);
 				break;
 			default:
 				break;
@@ -736,7 +799,7 @@ BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			EndDialog(hwnd,0);
 			break;
 		case IDC_EDIT:
-			show_key_dlg(hwnd,GetDlgItem(hwnd,IDC_KEYLIST),true);
+			show_key_dlg(hwnd,GetDlgItem(hwnd,IDC_KEYLIST),true,ASCII_COL_CHAR,ASCII_COL_KEY,ASCII_COL_VAL,&update_ascii_map);
 			break;
 		case IDC_ADD:
 			break;
@@ -799,13 +862,13 @@ BOOL dlg_func_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 							delete_selection(hlview);
 							break;
 						}
-						int edit=false;
+						bool edit=false;
 						if(key.wVKey==VK_F2)
 							edit=true;
-						show_key_dlg(hwnd,hlview,edit);
+						show_key_dlg(hwnd,hlview,edit,FUNC_COL_DESC,FUNC_COL_KEY,FUNC_COL_VAL,&update_func_map);
 						break;
 					case NM_DBLCLK:
-						show_key_dlg(hwnd,hlview,true);
+						show_key_dlg(hwnd,hlview,true,FUNC_COL_DESC,FUNC_COL_KEY,FUNC_COL_VAL,&update_func_map);
 						break;
 					default:
 						break;
@@ -832,22 +895,22 @@ BOOL dlg_func_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 }
 
 
-int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
+int get_shortcut_info(HWND hlview,int item,int col_key,SHORTCUT *sc)
 {
 	int result=FALSE;
 	WCHAR[40] tmp;
 	tmp[0]=0;
 	get_item_text(hlview,tmp,item,ASCII_COL_CHAR);
-	scp.sc.data=tmp[0];
+	sc.data=tmp[0];
 	memset(tmp.ptr,0,tmp.sizeof);
-	get_item_text(hlview,tmp,item,ASCII_COL_KEY);
+	get_item_text(hlview,tmp,item,col_key);
 	try{
 	if(StrStrW(tmp.ptr,"ctrl"))
-		scp.sc.ctrl=1;
+		sc.ctrl=1;
 	if(StrStrW(tmp.ptr,"alt"))
-		scp.sc.alt=1;
+		sc.alt=1;
 	if(StrStrW(tmp.ptr,"shift"))
-		scp.sc.shift=1;
+		sc.shift=1;
 	}catch(Exception e){
 	}
 	int i,index=0;
@@ -860,17 +923,17 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 		}
 	}
 	WCHAR *keyname=tmp.ptr+index;
-	scp.sc.vkey=0;
+	sc.vkey=0;
 	foreach(c;keylist){
 		try
 		if(StrStrW(keyname,c.name.ptr)){
-			scp.sc.vkey=c.val;
+			sc.vkey=c.val;
 			break;
 		}
 		catch(Exception e){
 		}
 	}
-	if(scp.sc.vkey==0 && (keyname[0]!=0)){
+	if(sc.vkey==0 && (keyname[0]!=0)){
 		int get_hex_val(WCHAR a){
 			if(a>='0' && a<='9')
 				return a-'0';
@@ -878,10 +941,10 @@ int get_shortcut_info(HWND hlview,int item,SHORTCUT_PARAM *scp)
 				return 10+a-'A';
 		}
 		if(keyname[0]=='0' && keyname[1]=='x'){
-			scp.sc.vkey=(get_hex_val(keyname[2])<<8)||get_hex_val(keyname[3]);
+			sc.vkey=(get_hex_val(keyname[2])<<8)||get_hex_val(keyname[3]);
 		}else{
 			DWORD val=OemKeyScan(keyname[0]);
-			scp.sc.vkey=MapVirtualKey(val&0xFFFF,MAPVK_VSC_TO_VK);
+			sc.vkey=MapVirtualKey(val&0xFFFF,MAPVK_VSC_TO_VK);
 		}
 	}
 	result=TRUE;
@@ -999,12 +1062,12 @@ BOOL _edit_proc2(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 extern (Windows)
 BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
-	static SHORTCUT_PARAM *scp=NULL;
+	static SHORTCUT_DLG_PARAM *scp=NULL;
 
 	switch(msg){
 	case WM_INITDIALOG:
 		{
-			scp=cast(SHORTCUT_PARAM*)lparam;
+			scp=cast(SHORTCUT_DLG_PARAM*)lparam;
 			if(scp is null)
 				EndDialog(hwnd,0);
 			HWND hedit=GetDlgItem(hwnd,IDC_EDIT);
@@ -1013,7 +1076,7 @@ BOOL dlg_enter_key(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				HFONT hf=get_dejavu_font();
 				if(hf)
 					SendDlgItemMessage(hwnd,IDC_EDIT,WM_SETFONT,cast(WPARAM)hf,TRUE);
-				if(scp.edit){
+				if(scp.is_edit){
 					wstring str=get_sc_key_text(scp.sc);
 					str~='\0';
 					SetWindowText(hedit,str.ptr);

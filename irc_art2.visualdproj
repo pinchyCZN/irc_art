@@ -456,6 +456,7 @@
    <File path="fonts\Swamp_Land.d" />
   </Folder>
   <File path="anchor_system.d" />
+  <File path="console.d" />
   <File path="debug_print.d" />
   <File path="file_image.d" />
   <File path="fonts.d" />
