@@ -41,6 +41,8 @@
 #define IDC_FILL_CHK                    1027
 #define IDC_HEXVAL                      1028
 #define IDC_SPACING                     1030
+#define IDC_FILTER2                     1033
+#define IDC_FILTER                      1033
 #define IDM_SAVE                        40001
 #define IDM_COPYTOCLIP                  40002
 #define IDM_FILEOPEN                    40004
@@ -58,7 +60,7 @@
 #ifndef APSTUDIO_READONLY_SYMBOLS
 #define _APS_NEXT_RESOURCE_VALUE        108
 #define _APS_NEXT_COMMAND_VALUE         40012
-#define _APS_NEXT_CONTROL_VALUE         1031
+#define _APS_NEXT_CONTROL_VALUE         1034
 #define _APS_NEXT_SYMED_VALUE           101
 #endif
 #endif

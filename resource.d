@@ -1,4 +1,4 @@
-/* Converted to D from ..\resource.h by htod */
+/* Converted to D from resource.h by htod */
 module resource;
 //{{NO_DEPENDENCIES}}
 // Microsoft Visual C++ generated include file.

@@ -140,11 +140,11 @@
 	</References>
 	<Files>
 		<File
-			RelativePath="..\resource.h"
+			RelativePath=".\resource.h"
 			>
 		</File>
 		<File
-			RelativePath="..\resource.rc"
+			RelativePath=".\resource.rc"
 			>
 		</File>
 	</Files>
