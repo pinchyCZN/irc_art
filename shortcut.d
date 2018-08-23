@@ -12,6 +12,8 @@ import fonts;
 import debug_print;
 
 nothrow:
+HWND hfunckeymap=NULL;
+HWND hasciikeymap=NULL;
 
 CONTROL_ANCHOR[] keyshort_anchor=[
 	{IDC_ADD,ANCHOR_LEFT|ANCHOR_BOTTOM},
@@ -408,7 +410,7 @@ void print_hex(WCHAR[] str,int val)
 	if(str.length>0)
 		str[$-1]=0;
 }
-void print_int(WCHAR[] str,uint val)
+void printw_int(WCHAR[] str,uint val)
 {
 	int index=0;
 	int last_nonzero=0;
@@ -450,7 +452,7 @@ const (WCHAR *)wstrstri(const WCHAR *str1,const WCHAR *str2)
 		a=str1[index1];
 		b=str2[index2];
 		if(0==b){
-			if(index2>1)
+			if(index2>0)
 				result=cast(WCHAR*)(str1+index1-index2);
 			break;
 		}
@@ -492,15 +494,16 @@ void fill_ascii_sc_list(HWND hlview,const WCHAR *filter)
 		char_str[1]=0;
 		sc_text=get_key_text(i);
 		if(filter[0]!=0){
+			int found=false;
 			if(wstrstri(cast(const WCHAR*)char_str,filter))
-				continue;
+				found=true;
 			if(wstrstri(cast(const WCHAR*)hex_str,filter))
-				continue;
+				found=true;
 			if(wstrstri(sc_text.ptr,filter))
+				found=true;
+			if(!found)
 				continue;
 		}
-		
-
 		lvitem.mask = LVIF_TEXT;
 		lvitem.pszText = hex_str.ptr;
 		lvitem.iItem = index;
@@ -528,31 +531,44 @@ void fill_ascii_sc_list(HWND hlview,const WCHAR *filter)
 	update_col_width(hlview,ASCII_COL_KEY);
 }
 
-void fill_func_sc_list(HWND hlview)
+void fill_func_sc_list(HWND hlview,const WCHAR *filter)
 {
 	try{
 		ListView_DeleteAllItems(hlview);
 		int i,index=0;
 		foreach(sc;sc_map){
-			WCHAR[20] str;
+			WCHAR[20] action_str;
+			WCHAR *desc_str=null;
+			printw_int(action_str,sc.action);
+			foreach(info;sc_info){
+				if(info.val==sc.action){
+					desc_str=cast(WCHAR*)info.desc.ptr;
+					break;
+				}
+			}
+			wstring key_str=get_sc_key_text(sc);
+			key_str~='\0';
+			if(filter[0]!=0){
+				int found=false;
+				if(wstrstri(cast(const WCHAR*)action_str.ptr,filter))
+					found=true;
+				if(wstrstri(cast(const WCHAR*)desc_str,filter))
+					found=true;
+				if(wstrstri(key_str.ptr,filter))
+					found=true;
+				if(!found)
+					continue;
+			}
+
 			LV_ITEM lvitem;
 			lvitem.mask = LVIF_TEXT;
-			print_int(str,sc.action);
-			lvitem.pszText = str.ptr;
+			lvitem.pszText = action_str.ptr;
 			lvitem.iItem = index;
 			lvitem.iSubItem = 0;
 			lvitem.lParam = 0;
 			ListView_InsertItem(hlview,&lvitem);
-			foreach(info;sc_info){
-				if(info.val==sc.action){
-					ListView_SetItemText(hlview,index,FUNC_COL_DESC,cast(LPTSTR)info.desc.ptr);
-					break;
-				}
-			}
-			wstring tmp=get_sc_key_text(sc);
-			tmp~='\0';
-			ListView_SetItemText(hlview,index,FUNC_COL_KEY,cast(wchar*)tmp.ptr);
-
+			ListView_SetItemText(hlview,index,FUNC_COL_DESC,cast(LPTSTR)desc_str);
+			ListView_SetItemText(hlview,index,FUNC_COL_KEY,cast(wchar*)key_str.ptr);
 			index++;
 
 		}
@@ -679,6 +695,54 @@ void update_func_map(const SHORTCUT sc)
 		sc_map[$-1]=sc;
 	}
 }
+int atoiw(const WCHAR *str)
+{
+	int result=0;
+	int base=10;
+	int index;
+	bool started=false;
+	bool negative=false;
+	index=0;
+	while(1){
+		import core.stdc.ctype;
+		WCHAR a=str[index++];
+		if(0==a)
+			break;
+		if('0'==a && (!started)){
+			WCHAR b=str[index];
+			b=cast(WCHAR)tolower(b);
+			if('x'==str[index]){
+				base=16;
+				index++;
+			}
+			started=true;
+		}else if(a==' '){
+			if(started)
+				break;
+		}else if(a=='-'){
+			if(started)
+				break;
+			negative=true;
+		}else{
+			result*=base;
+			a=cast(WCHAR)tolower(a);
+			if(a>='0' && a<='9')
+				result+=a-'0';
+			else{
+				if(16==base){
+					if(!(a>='a' && a <='f'))
+						break;
+				}else
+					break;
+				result+=a-'a'+10;
+			}
+			started=true;
+		}
+	}
+	if(negative)
+		result=-result;
+	return result;
+}
 void show_key_dlg(HWND hwnd,HWND hlview,bool is_edit,int col_title,int col_key,int col_data,
 				  void function(const SHORTCUT)nothrow update_sc)
 {
@@ -695,9 +759,15 @@ void show_key_dlg(HWND hwnd,HWND hlview,bool is_edit,int col_title,int col_key,i
 	scd.title=title.ptr;
 	scd.data=data.ptr;
 	scd.is_edit=is_edit;
+	WCHAR[10] tmp;
+	get_item_text(hlview,tmp,index,0);
+	int action=0;
+	action=atoiw(tmp.ptr);
+	scd.sc.action=action;
 
 	int r=DialogBoxParam(sc_param.hinstance,MAKEINTRESOURCE(IDD_SHORTCUT),hwnd,&dlg_enter_key,cast(LPARAM)&scd);
 	if(r){
+		scd.sc.action=action;
 		if(update_sc)
 			update_sc(scd.sc);
 		wstring str=get_sc_key_text(scd.sc);
@@ -738,6 +808,9 @@ extern (Windows)
 BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static int last_selection=0;
+	static WCHAR[40] filter="";
+	static HWND hparent=NULL;
+
 	switch(msg){
 	case WM_INITDIALOG:
 		SC_DLG_PARAM *sc=cast(SC_DLG_PARAM*)lparam;
@@ -745,15 +818,17 @@ BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			memset(&sc_param,0,sc_param.sizeof);
 		else
 			sc_param=*sc;
+		hparent=sc.hparent;
 		HWND hlview=GetDlgItem(hwnd,IDC_KEYLIST);
 		init_lview(hwnd,hlview,ASCII_DLG_COLS);
 		HFONT hf=get_dejavu_font();
 		if(hf)
 			SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
-		fill_ascii_sc_list(hlview,"");
+		fill_ascii_sc_list(hlview,filter.ptr);
+		SetDlgItemText(hwnd,IDC_FILTER,filter.ptr);
 		init_grippy(hwnd,IDC_GRIPPY);
 		anchor_init(hwnd,keyshort_anchor);
-		restore_win_rel_position(sc_param.hparent,hwnd,ascii_keymap_win_pos);
+		restore_win_rel_position(hparent,hwnd,ascii_keymap_win_pos);
 		SetFocus(hlview);
 		break;
 	case WM_SIZE:
@@ -790,12 +865,18 @@ BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			}
 		}
 		break;
+	case WM_SHOWWINDOW:
+		if(wparam)
+			restore_win_rel_position(hparent,hwnd,ascii_keymap_win_pos);
+		else
+			save_win_rel_position(hparent,hwnd,ascii_keymap_win_pos);
+		break;
 	case WM_COMMAND:
 		int idc=LOWORD(wparam);
 		switch(idc){
 		case IDCANCEL:
 		case IDOK:
-			save_win_rel_position(sc_param.hparent,hwnd,ascii_keymap_win_pos);
+			save_win_rel_position(hparent,hwnd,ascii_keymap_win_pos);
 			EndDialog(hwnd,0);
 			break;
 		case IDC_EDIT:
@@ -804,9 +885,10 @@ BOOL dlg_ascii_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case IDC_ADD:
 			break;
 		case IDC_FILTER:
-			WCHAR[40] tmp;
-			GetDlgItemText(hwnd,IDC_FILTER,tmp.ptr,tmp.length);
-			fill_ascii_sc_list(GetDlgItem(hwnd,IDC_KEYLIST),tmp.ptr);
+			if(EN_CHANGE==HIWORD(wparam)){
+				GetDlgItemText(hwnd,IDC_FILTER,filter.ptr,filter.length);
+				fill_ascii_sc_list(GetDlgItem(hwnd,IDC_KEYLIST),filter.ptr);
+			}
 			break;
 		default:
 			break;
@@ -823,6 +905,9 @@ extern (Windows)
 BOOL dlg_func_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 {
 	static int last_selection=0;
+	static WCHAR[40] filter="";
+	static HWND hparent=NULL;
+
 	switch(msg){
 		case WM_INITDIALOG:
 			SC_DLG_PARAM *sc=cast(SC_DLG_PARAM*)lparam;
@@ -830,15 +915,17 @@ BOOL dlg_func_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				memset(&sc_param,0,sc_param.sizeof);
 			else
 				sc_param=*sc;
+			hparent=sc.hparent;
 			HWND hlview=GetDlgItem(hwnd,IDC_KEYLIST);
 			init_lview(hwnd,hlview,FUNC_DLG_COLS);
 			HFONT hf=get_dejavu_font();
 			if(hf)
 				SendDlgItemMessage(hwnd,IDC_KEYLIST,WM_SETFONT,cast(WPARAM)hf,TRUE);
-			fill_func_sc_list(hlview);
+			fill_func_sc_list(hlview,filter.ptr);
+			SetDlgItemText(hwnd,IDC_FILTER,filter.ptr);
 			init_grippy(hwnd,IDC_GRIPPY);
 			anchor_init(hwnd,keyshort_anchor);
-			restore_win_rel_position(sc_param.hparent,hwnd,func_keymap_win_pos);
+			restore_win_rel_position(hparent,hwnd,func_keymap_win_pos);
 			SetFocus(hlview);
 			break;
 		case WM_SIZE:
@@ -880,8 +967,14 @@ BOOL dlg_func_keymap(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 			switch(idc){
 				case IDCANCEL:
 				case IDOK:
-					save_win_rel_position(sc_param.hparent,hwnd,func_keymap_win_pos);
+					save_win_rel_position(hparent,hwnd,func_keymap_win_pos);
 					EndDialog(hwnd,0);
+					break;
+				case IDC_FILTER:
+					if(EN_CHANGE==HIWORD(wparam)){
+						GetDlgItemText(hwnd,IDC_FILTER,filter.ptr,filter.length);
+						fill_func_sc_list(GetDlgItem(hwnd,IDC_KEYLIST),filter.ptr);
+					}
 					break;
 				default:
 					break;

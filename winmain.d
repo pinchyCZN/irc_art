@@ -374,7 +374,13 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			SC_DLG_PARAM scp;
 			scp.hparent=hmaindlg;
 			scp.hinstance=ghinstance;
-			DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_ascii_keymap,cast(LPARAM)&scp);
+			if(hasciikeymap is null)
+				hasciikeymap=CreateDialogParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_ascii_keymap,cast(LPARAM)&scp);
+			if(hasciikeymap){
+				if(ShowWindow(hasciikeymap,SW_SHOW))
+					SetFocus(hasciikeymap);
+			}
+			//DialogBoxParam(ghinstance,MAKEINTRESOURCE(IDD_KEYS),hmaindlg,&dlg_ascii_keymap,cast(LPARAM)&scp);
 		}
 		break;
 	case SC_OPEN_FUNC_SC_DLG:
@@ -1181,6 +1187,10 @@ int WinMain(HINSTANCE hinstance,HINSTANCE hprevinstance,LPSTR cmd_line,int cmd_s
 	version(_DEBUG)
 	{
 		debug_console(hmaindlg);
+		const WCHAR *str=" -500"w.ptr;
+		int val=atoiw(str);
+		printf("%i 0x%08X\n",val,val);
+		int i;
 		/*
 		WCHAR[40] tmp;
 		int i;

@@ -22,6 +22,7 @@ CONTROL_ANCHOR[] text_edit_anchor=[
 WIN_REL_POS text_win_pos;
 WCHAR[] last_text;
 HWND htextdlg=NULL;
+
 int text_spacing=0;
 
 struct TEXT_PARAMS{
