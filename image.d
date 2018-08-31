@@ -1273,6 +1273,12 @@ void fill_area(IMAGE *img,int fg,int bg,int fill_char)
 					break;
 				}
 			}
+			if(0==i){
+				if(bg>=0 || fg>=0 || fill_char!=0){
+					xpos=0;
+					break;
+				}
+			}
 		}
 		return xpos;
 	}
@@ -1348,7 +1354,7 @@ void fill_qb_area(IMAGE *img,int fg_color)
 		for(i=x-1;i>=0;i--){
 			int bg;
 			int c=get_qb_color(i,y,bg);
-			if(c>=0){
+			if(c!=color){
 				result=i+1;
 				break;
 			}else if(i==0){
@@ -1406,7 +1412,7 @@ void fill_qb_area(IMAGE *img,int fg_color)
 		for(i=x;i<max;i++){
 			int c,bg;
 			c=get_qb_color(i,y,bg);
-			if(c<0){
+			if(c!=color){
 				check_neighbors(i,y,color,list);
 				set_qblock(i,y,color);
 			}else{
