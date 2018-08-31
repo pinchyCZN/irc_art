@@ -682,6 +682,9 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 		case WM_KILLFOCUS:
 			set_focus_flag(hwnd,0);
 			return 0;
+		case WM_MOUSEACTIVATE:
+			SetFocus(hwnd);
+			break;
 		case WM_SETFOCUS:
 			set_focus_flag(hwnd,1);
 			return 0;
@@ -729,7 +732,8 @@ BOOL image_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 				x=LOWORD(lparam);
 				y=HIWORD(lparam);
 				flags=wparam;
-				process_mouse_move(x,y,flags);
+				if(image_focus_flag)
+					process_mouse_move(x,y,flags);
 			}
 			break;
 		case WM_CHAR:
@@ -1030,8 +1034,10 @@ BOOL main_dlg_proc(HWND hwnd,UINT msg,WPARAM wparam,LPARAM lparam)
 					case IDM_FILEOPEN:
 						{
 							IMAGE *img=get_current_image();
-							if(img !is null)
+							if(img !is null){
+								push_undo(img);
 								file_open(hwnd,*img,get_fg_color(),get_bg_color());
+							}
 						}
 						break;
 					case IDM_COPYTOCLIP:
