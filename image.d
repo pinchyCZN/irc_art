@@ -770,6 +770,14 @@ int paint_image2(HWND hwnd,HDC hdc)
 			}
 		}
 	}
+	//draw selection
+	{
+		if(img.selection_height()>0 && img.selection_width()>0){
+			rect=img.selection;
+			scale_rect(rect,img.cell_width,img.cell_height);
+			draw_stipple_rect(rect);
+		}
+	}
 	//draw focus
 	{
 		int x,y;
