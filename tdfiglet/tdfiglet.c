@@ -1196,14 +1196,16 @@ main(int argc, char *argv[])
 		printf("unable to load font:%s\n",fontfile);
 		exit(-1);
 	}
-	print_font_type(font->fonttype);
+	if(!opt.to_stdout)
+		print_font_type(font->fonttype);
 	{
 		FONT_ENTRY *f;
 		f=get_font_entry(fontfile);
 		if(f){
 			int res=is_font_valid_for_chars(f,used_chars);
 			if(!res){
-				printf("WARNING: font %s does not support all given chars!\n",fontfile);
+				if(!opt.to_stdout)
+					printf("WARNING: font %s does not support all given chars!\n",fontfile);
 			}
 		}
 	}
