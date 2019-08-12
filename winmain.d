@@ -532,6 +532,17 @@ int do_action(const SHORTCUT sc,IMAGE *img)
 			img.set_char(' ',x,y);
 		}
 		break;
+	case SC_MAKE_SELECTION:
+		{
+			POINT a,b;
+			a=img.pre_click;
+			b=img.cursor;
+			img.selection.left=a.x;
+			img.selection.top=a.y;
+			img.selection.right=b.x;
+			img.selection.bottom=b.y;
+		}
+		break;
 	case SC_RETURN:
 		img.move_cursor(0,1);
 		img.clear_selection();
@@ -931,7 +942,7 @@ void do_shit(HWND hwnd)
 	CheckDlgButton(hwnd,IDC_FG_CHK,BST_CHECKED);
 	bg_color=12;
 	version(_DEBUG){
-		img.qblock_mode=true;
+		//img.qblock_mode=true;
 		img.cursor.x=28;
 		img.cursor.y=11;
 		{
