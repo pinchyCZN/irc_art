@@ -896,10 +896,12 @@ printrow(const glyph_t *glyph, int row,unsigned char **buf,int *buf_len)
 		append_printf(buf,buf_len,"%s", utfchar);
 	}
 
-	if (opt.color == COLOR_ANSI) {
-		append_printf(buf,buf_len,"\x1b[0m");
-	} else {
-		append_printf(buf,buf_len,"\x03");
+	if(0){
+		if (opt.color == COLOR_ANSI) {
+			append_printf(buf,buf_len,"\x1b[0m");
+		} else {
+			append_printf(buf,buf_len,"\x03");
+		}
 	}
 }
 
@@ -958,10 +960,13 @@ printstr(const char *str, font_t *font,char **buf,int *buf_len)
 			g = font->glyphs[n];
 			printrow(g, i,buf,buf_len);
 
-			if (opt.color == COLOR_ANSI) {
-				append_printf(buf,buf_len,"%s","\x1b[0m");
-			} else {
-				append_printf(buf,buf_len,"%s","\x03");
+			if(1){
+				if (opt.color == COLOR_ANSI) {
+					append_printf(buf,buf_len,"%s","\x1b[0m");
+				} else {
+					//append_printf(buf,buf_len,"%s","\x03");
+					append_printf(buf,buf_len,"%s%s","\x03","1,1");
+				}
 			}
 			{
 				int s;
@@ -974,7 +979,7 @@ printstr(const char *str, font_t *font,char **buf,int *buf_len)
 		if (opt.color == COLOR_ANSI) {
 			append_printf(buf,buf_len,"%s","\x1b[0m\n");
 		} else {
-			append_printf(buf,buf_len,"%s","\x03\r\n");
+			append_printf(buf,buf_len,"%s","\r\n");
 		}
 	}
 }
