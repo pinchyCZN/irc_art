@@ -277,7 +277,7 @@ ibmtoutf8(char *a, char *u)
 		memcpy(u,out,res);
 	}
 	*/
-	unsigned char table[256][4]={
+	static unsigned char table[256][4]={
 		{0x00,0x00,0x00,0x00},
 		{0x01,0x00,0x00,0x00},
 		{0x02,0x00,0x00,0x00},
@@ -650,22 +650,77 @@ int get_font_count(FONT_ENTRY *flist)
 	}
 	return result;
 }
-char *get_random_font_name()
+int is_font_valid_for_chars(FONT_ENTRY *font,char *use_chars)
+{
+	int result=TRUE;
+	int i;
+	short *data=(short*)(font->data+45);
+	for(i=0;i<=0xFF;i++){
+		unsigned char a;
+		a=use_chars[i];
+		if(a && (i>=33) && (i<=126)){
+			short val;
+			val=data[i-33];
+			if(val == -1){
+				result=FALSE;
+				break;
+			}
+		}
+	}
+	return result;
+}
+int populate_use_font_list(FONT_ENTRY **use_list,int ulist_count,char *use_chars)
+{
+	int result=0;
+	int i,count,index=0;
+	count=get_font_count(font_list);
+	for(i=0;i<count;i++){
+		int res;
+		FONT_ENTRY *f;
+		f=&font_list[i];
+		res=is_font_valid_for_chars(f,use_chars);
+		if(res){
+			if(index>=ulist_count)
+				break;
+			use_list[index++]=f;
+		}
+	}
+	count=get_font_count(unused_font_list);
+	for(i=0;i<count;i++){
+		int res;
+		FONT_ENTRY *f;
+		f=&unused_font_list[i];
+		res=is_font_valid_for_chars(f,use_chars);
+		if(res){
+			if(index>=ulist_count)
+				break;
+			use_list[index++]=f;
+		}
+	}
+	result=index;
+	return result;
+}
+char *get_random_font_name(char *used_chars)
 {
 	char *result=DEFAULT_FONT;
 	int rval;
 	int c1,c2,total;
 	FONT_ENTRY *flist=font_list;
+	FONT_ENTRY **use_list;
+	int use_list_count;
 	srand(get_tick());
-	rval=rand();
 	c1=get_font_count(font_list);
 	c2=get_font_count(unused_font_list);
 	total=c1+c2;
-	rval%=total;
-	if(rval>=c1){
-		rval-=c1;
+	use_list=calloc(sizeof(FONT_ENTRY*),total);
+	if(0==use_list){
+		return result;
 	}
-	result=flist[rval].name;
+	use_list_count=populate_use_font_list(use_list,total,used_chars);
+	rval=rand();
+	rval%=use_list_count;
+	result=use_list[rval]->name;
+	free(use_list);
 	return result;
 }
 FONT_ENTRY *search_font_list(FONT_ENTRY *flist,const char *fname)
@@ -674,7 +729,7 @@ FONT_ENTRY *search_font_list(FONT_ENTRY *flist,const char *fname)
 	int index=0;
 	while(1){
 		FONT_ENTRY *f;
-		f=&font_list[index++];
+		f=&flist[index++];
 		if(0==f->data){
 			break;
 		}
@@ -1011,6 +1066,27 @@ void get_used_chars(int argc,char **argv,char *list)
 	}
 }
 
+void print_font_type(int type)
+{
+	typedef struct{
+		int type;
+		char *desc;
+	}MAP;
+	static MAP font_types[]={
+		{0,"Outline font"},
+		{1,"Block font"},
+		{2,"Color font"},
+	};
+	int i,count;
+	count=sizeof(font_types)/sizeof(MAP);
+	for(i=0;i<count;i++){
+		if(font_types[i].type==type){
+			printf("Type: %s\n",font_types[i].desc);
+			break;
+		}
+	}
+}
+
 int
 main(int argc, char *argv[])
 {
@@ -1106,11 +1182,26 @@ main(int argc, char *argv[])
 		if (!opt.random) {
 			fontfile = DEFAULT_FONT;
 		} else {
-			fontfile=get_random_font_name();
+			fontfile=get_random_font_name(used_chars);
 		}
 	}
 
 	font = loadfont(fontfile);
+	if(0==font){
+		printf("unable to load font:%s\n",fontfile);
+		exit(-1);
+	}
+	print_font_type(font->fonttype);
+	{
+		FONT_ENTRY *f;
+		f=get_font_entry(fontfile);
+		if(f){
+			int res=is_font_valid_for_chars(f,used_chars);
+			if(!res){
+				printf("WARNING: font %s does not support all given chars!\n",fontfile);
+			}
+		}
+	}
 
 	printf("\n");
 	{
