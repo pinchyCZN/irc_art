@@ -27,7 +27,9 @@ typedef unsigned char uint8_t;
 typedef unsigned short uint16_t;
 typedef unsigned int bool;
 #define false 0
-#define true 1
+#define true  1
+#define FALSE 0
+#define TRUE  1
 #define EX_OSERR -1
 
 #ifdef DEBUG
@@ -55,13 +57,6 @@ typedef unsigned int bool;
 #define ENC_UNICODE	0
 #define ENC_ANSI	1
 
-#ifndef FONT_DIR
-#define FONT_DIR	"fonts"
-#endif /* FONT_DIR */
-
-#ifndef FONT_EXT
-#define FONT_EXT	"tdf"
-#endif /* FONT_EXT */
 
 #ifndef DEFAULT_FONT
 #define DEFAULT_FONT	"brndamgx" /* seems most complete */
@@ -100,16 +95,15 @@ typedef struct font_s {
 	uint8_t height;
 } font_t;
 
-struct dirname_s {
-	char *str;
-//	SLIST_ENTRY(dirname_s) stuff;
-};
 
 const char *charlist = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNO"
 		       "PQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~";
 
 opt_t opt;
 
+unsigned int get_tick(void);
+int copy_to_clip(const char *str);
+int dump_to_console(const char *str);
 
 void
 usage(void)
@@ -163,11 +157,6 @@ int getopt(int argc,char **argv,const char *options)
 	return result;
 }
 
-int get_tick()
-{
-	unsigned int __stdcall GetTickCount(void);
-	return GetTickCount();
-}
 
 
 void append_printf(char **buf,int *buf_len,const char *fmt,...)
@@ -197,47 +186,7 @@ void append_printf(char **buf,int *buf_len,const char *fmt,...)
 	}
 }
 
-int copy_to_clip(char *str)
-{
-#define FALSE 0
-#define TRUE 1
-typedef void * HGLOBAL;
-#define GMEM_MOVEABLE       0x0002
-#define GMEM_DDESHARE       0x2000
-#define CF_TEXT             1
-void * __stdcall GlobalAlloc(unsigned int,unsigned long);
-void * __stdcall GlobalLock(HGLOBAL);
-void * __stdcall GlobalUnlock(HGLOBAL);
-void * __stdcall GlobalFree(HGLOBAL);
-int __stdcall OpenClipboard(void*);
-int __stdcall EmptyClipboard(void);
-int __stdcall SetClipboardData(int,HGLOBAL);
-int __stdcall CloseClipboard(void);
-	int len,result=FALSE;
-	HGLOBAL hmem;
-	char *lock;
-	len=strlen(str);
-	if(len==0)
-		return result;
-	len++;
-	hmem=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,len);
-	if(hmem!=0){
-		lock=GlobalLock(hmem);
-		if(lock!=0){
-			memcpy(lock,str,len);
-			GlobalUnlock(hmem);
-			if(OpenClipboard(NULL)!=0){
-				EmptyClipboard();
-				SetClipboardData(CF_TEXT,hmem);
-				CloseClipboard();
-				result=TRUE;
-			}
-		}
-		if(!result)
-			GlobalFree(hmem);
-	}
-	return result;
-}
+
 
 int
 lookupchar(char c, const font_t *font)
@@ -254,29 +203,6 @@ lookupchar(char c, const font_t *font)
 void
 ibmtoutf8(char *a, char *u)
 {
-	/*
-	typedef unsigned int UINT;
-	typedef unsigned long DWORD;
-	typedef const char * LPCCH;
-	typedef unsigned short * LPWSTR;
-	typedef const unsigned short * LPCWCH;
-	typedef char * LPSTR;
-	typedef int * LPBOOL;
-#define MB_PRECOMPOSED            0x00000001
-#define CP_UTF8                   65001
-	int __stdcall MultiByteToWideChar(UINT,DWORD,LPCCH,int,LPWSTR,int);
-	int __stdcall WideCharToMultiByte(UINT,DWORD,LPCWCH,int,LPSTR,int,LPCCH,LPBOOL);
-	unsigned short tmp[10]={0};
-	char out[10]={0};
-	int res;
-	res=MultiByteToWideChar(437,0,a,1,tmp,10);
-	res=WideCharToMultiByte(CP_UTF8,0,tmp,res,out,sizeof(out),0,0);
-	if(res>0){
-		if(res>4)
-			res=4;
-		memcpy(u,out,res);
-	}
-	*/
 	static unsigned char table[256][4]={
 		{0x00,0x00,0x00,0x00},
 		{0x01,0x00,0x00,0x00},
@@ -633,12 +559,12 @@ typedef struct{
 	unsigned char *data;
 	unsigned int len;
 	char *name;
-}FONT_ENTRY;
+}FONT_FILE;
 
-extern FONT_ENTRY font_list[];
-extern FONT_ENTRY unused_font_list[];
+extern FONT_FILE font_list[];
+extern FONT_FILE unused_font_list[];
 
-int get_font_count(FONT_ENTRY *flist)
+int get_font_count(FONT_FILE *flist)
 {
 	int result=0;
 	int index=0;
@@ -650,7 +576,7 @@ int get_font_count(FONT_ENTRY *flist)
 	}
 	return result;
 }
-int is_font_valid_for_chars(FONT_ENTRY *font,char *use_chars)
+int is_font_valid_for_chars(FONT_FILE *font,char *use_chars)
 {
 	int result=TRUE;
 	int i;
@@ -669,14 +595,14 @@ int is_font_valid_for_chars(FONT_ENTRY *font,char *use_chars)
 	}
 	return result;
 }
-int populate_use_font_list(FONT_ENTRY **use_list,int ulist_count,char *use_chars)
+int populate_use_font_list(FONT_FILE **use_list,int ulist_count,char *use_chars)
 {
 	int result=0;
 	int i,count,index=0;
 	count=get_font_count(font_list);
 	for(i=0;i<count;i++){
 		int res;
-		FONT_ENTRY *f;
+		FONT_FILE *f;
 		f=&font_list[i];
 		res=is_font_valid_for_chars(f,use_chars);
 		if(res){
@@ -688,7 +614,7 @@ int populate_use_font_list(FONT_ENTRY **use_list,int ulist_count,char *use_chars
 	count=get_font_count(unused_font_list);
 	for(i=0;i<count;i++){
 		int res;
-		FONT_ENTRY *f;
+		FONT_FILE *f;
 		f=&unused_font_list[i];
 		res=is_font_valid_for_chars(f,use_chars);
 		if(res){
@@ -705,14 +631,14 @@ char *get_random_font_name(char *used_chars)
 	char *result=DEFAULT_FONT;
 	int rval;
 	int c1,c2,total;
-	FONT_ENTRY *flist=font_list;
-	FONT_ENTRY **use_list;
+	FONT_FILE *flist=font_list;
+	FONT_FILE **use_list;
 	int use_list_count;
 	srand(get_tick());
 	c1=get_font_count(font_list);
 	c2=get_font_count(unused_font_list);
 	total=c1+c2;
-	use_list=calloc(sizeof(FONT_ENTRY*),total);
+	use_list=calloc(sizeof(FONT_FILE*),total);
 	if(0==use_list){
 		return result;
 	}
@@ -723,12 +649,12 @@ char *get_random_font_name(char *used_chars)
 	free(use_list);
 	return result;
 }
-FONT_ENTRY *search_font_list(FONT_ENTRY *flist,const char *fname)
+FONT_FILE *search_font_list(FONT_FILE *flist,const char *fname)
 {
-	FONT_ENTRY *result=0;
+	FONT_FILE *result=0;
 	int index=0;
 	while(1){
-		FONT_ENTRY *f;
+		FONT_FILE *f;
 		f=&flist[index++];
 		if(0==f->data){
 			break;
@@ -740,9 +666,9 @@ FONT_ENTRY *search_font_list(FONT_ENTRY *flist,const char *fname)
 	}
 	return result;
 }
-FONT_ENTRY *get_font_entry(const char *fname)
+FONT_FILE *get_font_entry(const char *fname)
 {
-	FONT_ENTRY *result=0;
+	FONT_FILE *result=0;
 	result=search_font_list(font_list,fname);
 	if(0==result){
 		result=search_font_list(unused_font_list,fname);
@@ -757,7 +683,7 @@ font_t
 	uint8_t *map = NULL;
 	size_t len;
 	uint8_t *p;
-	FONT_ENTRY *fentry=0;
+	FONT_FILE *fentry=0;
 	int i;
 
 	const char *magic = "\x13TheDraw FONTS file\x1a";
@@ -1199,7 +1125,7 @@ main(int argc, char *argv[])
 	if(!opt.to_stdout)
 		print_font_type(font->fonttype);
 	{
-		FONT_ENTRY *f;
+		FONT_FILE *f;
 		f=get_font_entry(fontfile);
 		if(f){
 			int res=is_font_valid_for_chars(f,used_chars);
@@ -1222,8 +1148,9 @@ main(int argc, char *argv[])
 		if(opt.to_stdout){
 			printf("%s",temp);
 		}else{
-			printf("copied to clipboard\nuse -s for stdout\n");
+			printf("copied to clipboard\n");
 			copy_to_clip(temp);
+			dump_to_console(temp);
 		}
 	}
 
