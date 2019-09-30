@@ -101,9 +101,44 @@ const char *charlist = "!\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNO"
 
 opt_t opt;
 
-unsigned int get_tick(void);
 int copy_to_clip(const char *str);
-int dump_to_console(const char *str);
+#ifdef __MINGW32__
+#include <windows.h>
+int copy_to_clip(const char *str)
+{
+	int len,result=FALSE;
+	HGLOBAL hmem;
+	char *lock;
+	len=strlen(str);
+	if(len==0)
+		return result;
+	len++;
+	hmem=GlobalAlloc(GMEM_MOVEABLE|GMEM_DDESHARE,len);
+	if(hmem!=0){
+		lock=GlobalLock(hmem);
+		if(lock!=0){
+			memcpy(lock,str,len);
+			GlobalUnlock(hmem);
+			if(OpenClipboard(NULL)!=0){
+				EmptyClipboard();
+				SetClipboardData(CF_TEXT,hmem);
+				CloseClipboard();
+				result=TRUE;
+			}
+		}
+		if(!result)
+			GlobalFree(hmem);
+	}
+	return result;
+}
+#else
+#ifndef _WIN32
+int copy_to_clip(const char *str)
+{
+	return 0;
+}
+#endif
+#endif
 
 void
 usage(void)
@@ -159,7 +194,7 @@ int getopt(int argc,char **argv,const char *options)
 
 
 
-void append_printf(char **buf,int *buf_len,const char *fmt,...)
+void append_printf(unsigned char **buf,int *buf_len,const char *fmt,...)
 {
 	va_list ap;
 	int res;
@@ -634,7 +669,7 @@ char *get_random_font_name(char *used_chars)
 	FONT_FILE *flist=font_list;
 	FONT_FILE **use_list;
 	int use_list_count;
-	srand(get_tick());
+	srand(time(0));
 	c1=get_font_count(font_list);
 	c2=get_font_count(unused_font_list);
 	total=c1+c2;
@@ -832,7 +867,7 @@ printrow(const glyph_t *glyph, int row,unsigned char **buf,int *buf_len)
 }
 
 void
-printstr(const char *str, font_t *font,char **buf,int *buf_len)
+printstr(const char *str, font_t *font,unsigned char **buf,int *buf_len)
 {
 	int maxheight = 0;
 	int linewidth = 0;
@@ -932,7 +967,7 @@ void save_font_info()
 {
 	int getch();
 	int i;
-	char *tmp=0;
+	unsigned char *tmp=0;
 	int tmp_len=0;
 	static char *tmp_list[200]={0};
 	int tmp_index=0;
@@ -1138,7 +1173,7 @@ main(int argc, char *argv[])
 
 	printf("\n");
 	{
-		char *temp=0;
+		unsigned char *temp=0;
 		int temp_len=0;
 		int i;
 		for (i = 0; i < argc; i++) {
@@ -1150,7 +1185,6 @@ main(int argc, char *argv[])
 		}else{
 			printf("copied to clipboard\n");
 			copy_to_clip(temp);
-			dump_to_console(temp);
 		}
 	}
 
