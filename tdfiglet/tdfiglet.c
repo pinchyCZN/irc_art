@@ -943,6 +943,11 @@ printstr(const char *str, font_t *font,unsigned char **buf,int *buf_len)
 			append_printf(buf,buf_len,"%s","\r\n");
 		}
 	}
+	if (opt.color == COLOR_ANSI) {
+		append_printf(buf,buf_len,"%s","\x1b[0m\n");
+	}else{
+		append_printf(buf,buf_len,"%s%s\r\n","\x03","1,1");
+	}
 }
 
 typedef unsigned char BYTE;
@@ -1069,7 +1074,7 @@ main(int argc, char *argv[])
 	opt.info = false;
 	opt.encoding = ENC_UNICODE;
 //	opt.encoding = ENC_ANSI;
-	opt.random = false;
+	opt.random = TRUE;
 	opt.color = COLOR_MIRC;
 
 
